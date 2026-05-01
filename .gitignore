@@ -1,0 +1,34 @@
+### --- Python & IDE --- ###
+# Environnement virtuel (le plus important à ignorer)
+venv/
+.venv/
+env/
+bin/
+lib/
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+# IDE JetBrains (PyCharm/IntelliJ)
+.idea/
+*.iml
+
+### --- Docker & Infrastructure --- ###
+# On ignore les données réelles des containers (trop lourd)
+postgres_data/
+mosquitto/data/
+mosquitto/log/
+portainer_data/
+# Si tu crées des volumes pour Kafka/Redpanda
+redpanda_data/
+
+### --- Secrets & Config --- ###
+# Fichiers contenant des clés API ou mots de passe
+.env
+config_private.py
+secrets.json
+
+### --- OS & Divers --- ###
+.DS_Store
+Thumbs.db
+*.log

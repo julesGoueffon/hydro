@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   # Portainer : Pour gérer tes containers via http://localhost:9443
+  #GreenHouseAdmin2026!
   portainer:
     image: portainer/portainer-ce:latest
     container_name: portainer
@@ -51,6 +52,38 @@ services:
       - ./postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    # L'outil de management visuel
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: greenhouse-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+
+  minio_storage:
+    image: minio/minio
+    container_name: minio_storage
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password
+    volumes:
+      - ./minio_data:/data
+    # Cette commande fait tout en une seule fois
+    command: >
+      sh -c "minio server /data --console-address ':9001' & 
+             sleep 5; 
+             mc alias set local http://localhost:9000 admin password;
+             mc mb local/images || true;
+             mc anonymous set download local/images;
+             wait"
 
   # Grafana : Ton tableau de bord (http://localhost:3000)
   grafana:

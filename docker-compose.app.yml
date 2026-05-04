@@ -1,5 +1,5 @@
-# Ce fichier est le point d'entrée principal du projet (Production).
-# Il inclut automatiquement l'infrastructure avant de lancer ton code Python.
+# Ce fichier gère UNIQUEMENT ton code Python (FastAPI, Spark, Bridge).
+# Il inclut automatiquement l'infrastructure avant de démarrer.
 
 include:
   - docker-compose.infra.yml
@@ -12,49 +12,81 @@ services:
   # 1. L'API Backend (FastAPI)
   fastapi_backend:
     build: .
-    container_name: fastapi_backend
-    # La commande pour lancer uvicorn en mode production
-    command: uvicorn backend.api_main:app --host 0.0.0.0 --port 8000
+    container_name: ingestion_image
+    # L'astuce "python -m" garantit qu'on trouve le module même si le PATH système est mal configuré
+    command: python -m uvicorn apps.ingestion_image.image_main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
-      - redpanda
-      - minio_storage
+      postgres:
+        condition: service_started
+      redpanda:
+        condition: service_started
+      minio_storage:
+        condition: service_started
+      kafka_setup:
+        condition: service_completed_successfully
 
-  # 2. Le processeur Spark Télémétrie
+  # 2. Le Bridge MQTT -> Kafka
+  mqtt_bridge:
+    build: .
+    container_name: mqtt_bridge
+    environment:
+      - PYTHONPATH=/app
+    # On lance un simple script Python
+    command: python apps/bridge/bridge.py
+    depends_on:
+      mosquitto:
+        condition: service_started
+      redpanda:
+        condition: service_started
+      kafka_setup:
+        condition: service_completed_successfully
+
+  # 3. Le processeur Spark Télémétrie
   spark_telemetry:
     build: .
     container_name: spark_telemetry
-    command: >
-      spark-submit 
-      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.postgresql:postgresql:42.7.3 
-      processors/telemetry_processor.py
+    environment:
+      - PYTHONPATH=/app
+    # Plus besoin de spark-submit, PySpark gère tout en interne !
+    command: python apps/spark_processor/telemetry_processor.py
     depends_on:
-      - postgres
-      - redpanda
+      postgres:
+        condition: service_started
+      redpanda:
+        condition: service_started
+      kafka_setup:
+        condition: service_completed_successfully
 
-  # 3. Le processeur Spark Images (MinIO -> OpenCV -> Blur Score)
+  # 4. Le processeur Spark Images
   spark_images:
     build: .
     container_name: spark_images
-    command: >
-      spark-submit 
-      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.postgresql:postgresql:42.7.3 
-      processors/image_processor.py
+    environment:
+      - PYTHONPATH=/app
+    command: python apps/spark_processor/image_processor.py
     depends_on:
-      - postgres
-      - redpanda
-      - minio_storage
+      postgres:
+        condition: service_started
+      redpanda:
+        condition: service_started
+      minio_storage:
+        condition: service_started
+      kafka_setup:
+        condition: service_completed_successfully
 
-  # 4. Le processeur Spark Météo (Basé sur ton fichier processor.py)
+  # 5. Le processeur Spark Météo
   spark_weather:
     build: .
     container_name: spark_weather
-    command: >
-      spark-submit 
-      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.postgresql:postgresql:42.7.3 
-      processors/processor.py
+    environment:
+      - PYTHONPATH=/app
+    command: python apps/spark_processor/processor.py
     depends_on:
-      - postgres
-      - redpanda
+      postgres:
+        condition: service_started
+      redpanda:
+        condition: service_started
+      kafka_setup:
+        condition: service_completed_successfully

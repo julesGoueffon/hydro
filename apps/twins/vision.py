@@ -17,12 +17,14 @@ def send_fake_photo():
     while True:
         try:
             print("📸 Prise de vue en cours...")
-            # On simule un fichier binaire (des bytes)
-            files = {'file': ('fake_image.jpg', b'fake_jpeg_bytes_content', 'image/jpeg')}
-            headers = {'X-Device-ID': DEVICE_ID}
+            # On envoie du RAW binaire, pas un formulaire multipart !
+            headers = {
+                'X-Device-ID': DEVICE_ID,
+                'Content-Type': 'image/jpeg'
+            }
 
-            # Envoi de la requête POST
-            response = requests.post(API_URL, files=files, headers=headers)
+            # Utilisation de 'data=' au lieu de 'files=' pour simuler l'ESP32
+            response = requests.post(API_URL, data=b'fake_jpeg_bytes_content', headers=headers)
             print(f"📤 Photo envoyée au Backend. Status: {response.status_code}")
         except Exception as e:
             # Cette erreur est normale tant que ton backend FastAPI n'est pas codé et lancé !

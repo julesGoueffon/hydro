@@ -1,3 +1,9 @@
-python-dotenv~=1.2.2
-requests~=2.33.1
-confluent-kafka~=2.14.0
+fastapi
+uvicorn
+confluent-kafka
+paho-mqtt
+pyspark==3.5.3
+boto3
+opencv-python-headless
+python-dotenv
+minio

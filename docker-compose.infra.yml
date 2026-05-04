@@ -23,22 +23,36 @@ services:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
 
-  # Redpanda : Kafka ultra-léger
+  # Redpanda : Kafka ultra-léger (Commande corrigée pour éviter le bug d'argument)
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v23.2.1
     container_name: redpanda
-    command:
-      - redpanda start
-      - --smp 1
-      - --memory 1G
-      - --reserve-memory 0M
-      - --overprovisioned
-      - --node-id 0
-      - --check=false
-      - --kafka-addr PLAINTEXT://0.0.0.0:9092
-      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+    command: >
+      redpanda start 
+      --smp 1 
+      --memory 1G 
+      --reserve-memory 0M 
+      --overprovisioned 
+      --node-id 0 
+      --check=false 
+      --kafka-addr PLAINTEXT://0.0.0.0:9092 
+      --advertise-kafka-addr PLAINTEXT://redpanda:9092
     ports:
       - "9092:9092"
+
+  # Initialisation des Topics Kafka
+
+  # Initialisation des Topics Kafka via script Bash
+  kafka_setup:
+    image: docker.redpanda.com/redpandadata/redpanda:v23.2.1
+    container_name: kafka_setup
+    depends_on:
+      - redpanda
+    volumes:
+      # On monte le script créé localement dans le conteneur
+      - ./setup_kafka.sh:/setup_kafka.sh
+    # On exécute le script avec bash explicitement (pas besoin de chmod sur Windows)
+    entrypoint: [ "bash", "/setup_kafka.sh" ]
 
   # PostgreSQL + TimescaleDB
   postgres:
@@ -87,5 +101,13 @@ services:
     container_name: grafana
     ports:
       - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true # Permet de voir sans se loguer (optionnel)
+    volumes:
+      # 1. Persistance de la DB interne (utilisateurs, sessions)
+      - ./grafana/data:/var/lib/grafana
+      # 2. Provisioning (DataSource et Dashboards automatiques)
+      - ./grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - postgres

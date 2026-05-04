@@ -40,7 +40,7 @@ def write_to_postgres(df, batch_id):
         df.write \
             .mode("append") \
             .format("jdbc") \
-            .option("url", "jdbc:postgresql://localhost:5432/greenhouse") \
+            .option("url", f"jdbc:postgresql://{AppConfig.DB_HOST}:5432/{AppConfig.DB_NAME}") \
             .option("dbtable", "weather_metrics") \
             .option("user", "admin") \
             .option("password", "password") \

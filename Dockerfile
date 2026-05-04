@@ -4,12 +4,9 @@ FROM python:3.10-slim
 # ==========================================
 # 1. DÉPENDANCES SYSTÈME (Lourdes)
 # ==========================================
-# Explication : 
-# - default-jre : Requis par PySpark pour s'exécuter
-# - libgl1-mesa-glx & libglib2.0-0 : Requis par OpenCV pour traiter les images
 RUN apt-get update && apt-get install -y \
     default-jre \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,18 +19,14 @@ WORKDIR /app
 # ==========================================
 # 2. DÉPENDANCES PYTHON
 # ==========================================
-# On copie uniquement le requirements.txt en premier.
-# Cela permet à Docker de "cacher" cette étape si tu modifies juste ton code Python.
 COPY requirements.txt .
-
-# Installation des paquets (sans garder le cache pour alléger l'image finale)
 RUN pip install --no-cache-dir -r requirements.txt
+
+RUN python -c "import pyspark; from pyspark.sql import SparkSession; SparkSession.builder.config('spark.jars.packages', f'org.apache.spark:spark-sql-kafka-0-10_2.12:{pyspark.__version__},org.postgresql:postgresql:42.7.3').getOrCreate()"
+
 
 # ==========================================
 # 3. COPIE DU CODE SOURCE
 # ==========================================
-# On copie l'intégralité du projet (backend, processors, bridge, common...)
+# On copie proprement tout le code à la racine du WORKDIR (/app)
 COPY . .
-
-# IMPORTANT : Il n'y a PAS de CMD ou ENTRYPOINT.
-# C'est ton fichier docker-compose.app.yml qui décidera s'il lance FastAPI ou un script Spark.

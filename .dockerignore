@@ -1,0 +1,23 @@
+# Ignore the virtual environment
+.venv/
+venv/
+ENV/
+
+# Ignore local Docker/Portainer data
+portainer_data/
+postgres_data/
+
+
+# Ignore Python artifacts
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore IDE settings
+.vscode/
+.idea/
+
+# Ignore git metadata
+.git
+.gitignore

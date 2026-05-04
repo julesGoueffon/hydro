@@ -7,7 +7,7 @@
 const char* ssid = "Livebox-E960";
 const char* password = "o9gG5ggCgVEPcPjMau";
 const char* serverIP = "192.168.1.30"; // L'IP de ton PC
-String serverName = "http://192.168.1.30:5000/upload";
+String serverName = "http://192.168.1.30:8000/api/v1/camera/upload"; // ALIGNÉ !
 // --------------------------------
 
 // Configuration des broches pour le modèle AI Thinker
@@ -89,6 +89,7 @@ void loop() {
     HTTPClient http;
     http.begin(serverName);
     http.addHeader("Content-Type", "image/jpeg");
+    http.addHeader("X-Device-ID", "node3_vision_real"); // AJOUTÉ !
 
     // Envoyer l'image en POST
     int httpResponseCode = http.POST(fb->buf, fb->len);

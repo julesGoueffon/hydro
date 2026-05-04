@@ -110,7 +110,7 @@ def ping_loop(client):
 
 
 if __name__ == "__main__":
-    client = mqtt.Client(DEVICE_ID)
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id=DEVICE_ID)
     client.on_connect = on_connect
     client.on_message = on_message
     client.connect(BROKER, PORT, 60)

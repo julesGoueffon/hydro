@@ -36,13 +36,16 @@ conf = {
 producer = Producer(conf)
 
 
-@app.post("/upload")
+@app.post("/api/v1/camera/upload")
 async def upload_image(request: Request):
     image_data = await request.body()
     timestamp = int(time.time())
 
+    # On lit le header envoyé par l'ESP32 ou le Mock (par défaut : esp32_cam_inconnu)
+    device_id = request.headers.get("X-Device-ID", "esp32_cam_inconnu")
+
     # Le nom du fichier dans MinIO
-    object_name = f"image_{timestamp}.jpg"
+    object_name = f"{device_id}_{timestamp}.jpg"
 
     # --- Étape A : Sauvegarde directe dans MinIO ---
     # io.BytesIO permet de faire croire à MinIO que nos données en mémoire sont un fichier
@@ -59,10 +62,9 @@ async def upload_image(request: Request):
 
     # --- Étape B : Envoi du message à Kafka ---
     event = {
-        "sensor_name": "esp32_cam_serre",
+        "sensor_name": device_id,  # On utilise l'ID dynamique !
         "timestamp": timestamp,
         "image_path": storage_path
-        # Plus de statut, on garde l'essentiel !
     }
 
     producer.produce(

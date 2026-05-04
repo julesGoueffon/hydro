@@ -2,12 +2,17 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, current_timestamp, lit
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType
 from common.config import AppConfig
+import pyspark
 
 print("🚀 Démarrage du processeur Spark (Télémétrie & Actionneurs -> Postgres)...")
 
+# 💡 ASTUCE INDUS : On récupère dynamiquement la version exacte de PySpark
+spark_version = pyspark.__version__
+kafka_pkg = f"org.apache.spark:spark-sql-kafka-0-10_2.12:{spark_version}"
+
 spark = SparkSession.builder \
     .appName("HydroTelemetryProcessor") \
-    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.postgresql:postgresql:42.7.3") \
+    .config("spark.jars.packages", f"{kafka_pkg},org.postgresql:postgresql:42.7.3") \
     .getOrCreate()
 
 spark.sparkContext.setLogLevel("WARN")
@@ -98,7 +103,7 @@ def write_actuators_to_postgres(df, batch_id):
             .option("url", f"jdbc:postgresql://{AppConfig.DB_HOST}:5432/{AppConfig.DB_NAME}") \
             .option("dbtable", "actuator_logs") \
             .option("user", AppConfig.DB_USER) \
-            .option("password", AppConfig.DB_PASS) \
+            .option("password", AppConfig.DB_PASSWORD) \
             .option("driver", "org.postgresql.Driver") \
             .save()
 

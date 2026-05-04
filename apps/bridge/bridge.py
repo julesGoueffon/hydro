@@ -4,9 +4,10 @@ import json
 import time
 
 # --- CONFIGURATION ---
-MQTT_BROKER = "127.0.0.1"  # Mettre le nom du conteneur "mosquitto" si exécuté via Docker
 MQTT_PORT = 1883
-KAFKA_BROKER = "127.0.0.1:9092"  # Mettre "redpanda:9092" si exécuté via Docker
+
+MQTT_BROKER = "mosquitto"
+KAFKA_BROKER = "redpanda:9092"
 
 # --- INITIALISATION KAFKA PRODUCER ---
 kafka_conf = {
@@ -53,7 +54,7 @@ def on_message(client, userdata, msg):
 if __name__ == "__main__":
     print("🌉 Démarrage du Bridge MQTT -> Kafka...")
 
-    mqtt_client = mqtt.Client("bridge_service")
+    mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id="bridge_service")
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
 

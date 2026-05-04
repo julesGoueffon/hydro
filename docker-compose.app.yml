@@ -1,0 +1,60 @@
+# Ce fichier est le point d'entrée principal du projet (Production).
+# Il inclut automatiquement l'infrastructure avant de lancer ton code Python.
+
+include:
+  - docker-compose.infra.yml
+
+services:
+  # ========================================================
+  # TES SERVICES PYTHON (MICRO-SERVICES)
+  # ========================================================
+
+  # 1. L'API Backend (FastAPI)
+  fastapi_backend:
+    build: .
+    container_name: fastapi_backend
+    # La commande pour lancer uvicorn en mode production
+    command: uvicorn backend.api_main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redpanda
+      - minio_storage
+
+  # 2. Le processeur Spark Télémétrie
+  spark_telemetry:
+    build: .
+    container_name: spark_telemetry
+    command: >
+      spark-submit 
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.postgresql:postgresql:42.7.3 
+      processors/telemetry_processor.py
+    depends_on:
+      - postgres
+      - redpanda
+
+  # 3. Le processeur Spark Images (MinIO -> OpenCV -> Blur Score)
+  spark_images:
+    build: .
+    container_name: spark_images
+    command: >
+      spark-submit 
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.postgresql:postgresql:42.7.3 
+      processors/image_processor.py
+    depends_on:
+      - postgres
+      - redpanda
+      - minio_storage
+
+  # 4. Le processeur Spark Météo (Basé sur ton fichier processor.py)
+  spark_weather:
+    build: .
+    container_name: spark_weather
+    command: >
+      spark-submit 
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.postgresql:postgresql:42.7.3 
+      processors/processor.py
+    depends_on:
+      - postgres
+      - redpanda

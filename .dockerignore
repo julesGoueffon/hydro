@@ -6,6 +6,7 @@ ENV/
 # Ignore local Docker/Portainer data
 portainer_data/
 postgres_data/
+grafana/data/
 
 
 # Ignore Python artifacts

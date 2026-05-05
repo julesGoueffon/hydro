@@ -28,3 +28,6 @@ class AppConfig:
     MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'admin')
     MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'password')
     MINIO_BUCKET_NAME = os.getenv('MINIO_BUCKET_NAME', 'images')
+
+    # --- celery ---
+    REDIS_URL = os.getenv("CELERY_BROKER", "redis://redis:6379/0")

@@ -90,3 +90,32 @@ services:
         condition: service_started
       kafka_setup:
         condition: service_completed_successfully
+
+# 6 Le worker qui exécute la tâche (le cerveau)
+  celery_worker:
+    build: .
+    container_name: control_worker
+    # Assure-toi que "control_worker" correspond au chemin de ton fichier Python
+    command: celery -A control_worker worker --loglevel=info
+    environment:
+      - SIM_SPEED=${SIM_SPEED:-1.0}
+    depends_on:
+      postgres:
+        condition: service_started
+      redpanda:
+        condition: service_started
+      redis:
+        condition: service_started
+
+
+  # 7 Le scheduler qui déclenche la tâche à intervalle régulier (le métronome)
+  celery_beat:
+    build: .
+    container_name: control_beat
+    command: celery -A control_worker beat --loglevel=info
+    environment:
+      - SIM_SPEED=${SIM_SPEED:-1.0}
+      - CELERY_BROKER=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_started

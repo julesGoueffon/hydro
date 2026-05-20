@@ -9,6 +9,6 @@ while ! rpk cluster info --brokers redpanda:9092 > /dev/null 2>&1; do
 done
 
 echo "🚀 Redpanda est en ligne ! Création des topics..."
-rpk topic create telemetry_stream actuator_stream image_events weather_raw --brokers redpanda:9092
+rpk topic create telemetry_stream actuator_stream command_stream image_events weather_raw --brokers redpanda:9092
 
 echo "✅ Topics provisionnés avec succès !"

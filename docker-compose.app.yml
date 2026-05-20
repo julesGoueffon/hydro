@@ -44,13 +44,13 @@ services:
         condition: service_completed_successfully
 
   # 3. Le processeur Spark Télémétrie
-  spark_telemetry:
+  spark_global:
     build: .
-    container_name: spark_telemetry
+    container_name: spark_global
     environment:
       - PYTHONPATH=/app
     # Plus besoin de spark-submit, PySpark gère tout en interne !
-    command: python apps/spark_processor/telemetry_processor.py
+    command: python apps/spark_processor/main_processor.py
     depends_on:
       postgres:
         condition: service_started
@@ -58,47 +58,17 @@ services:
         condition: service_started
       kafka_setup:
         condition: service_completed_successfully
-
-  # 4. Le processeur Spark Images
-  spark_images:
-    build: .
-    container_name: spark_images
-    environment:
-      - PYTHONPATH=/app
-    command: python apps/spark_processor/image_processor.py
-    depends_on:
-      postgres:
-        condition: service_started
-      redpanda:
-        condition: service_started
       minio_storage:
         condition: service_started
-      kafka_setup:
-        condition: service_completed_successfully
 
-  # 5. Le processeur Spark Météo
-  spark_weather:
-    build: .
-    container_name: spark_weather
-    environment:
-      - PYTHONPATH=/app
-    command: python apps/spark_processor/processor.py
-    depends_on:
-      postgres:
-        condition: service_started
-      redpanda:
-        condition: service_started
-      kafka_setup:
-        condition: service_completed_successfully
-
-# 6 Le worker qui exécute la tâche (le cerveau)
+# 4 Le worker qui exécute la tâche (le cerveau)
   celery_worker:
     build: .
     container_name: control_worker
     # Assure-toi que "control_worker" correspond au chemin de ton fichier Python
-    command: celery -A control_worker worker --loglevel=info
+    command: celery -A apps.celery_brain.regulation_wet worker --loglevel=info
     environment:
-      - SIM_SPEED=${SIM_SPEED:-1.0}
+      - SIM_SPEED=5
     depends_on:
       postgres:
         condition: service_started
@@ -108,13 +78,13 @@ services:
         condition: service_started
 
 
-  # 7 Le scheduler qui déclenche la tâche à intervalle régulier (le métronome)
+  # 5 Le scheduler qui déclenche la tâche à intervalle régulier (le métronome)
   celery_beat:
     build: .
     container_name: control_beat
-    command: celery -A control_worker beat --loglevel=info
+    command: celery -A apps.celery_brain.regulation_wet beat --loglevel=info
     environment:
-      - SIM_SPEED=${SIM_SPEED:-1.0}
+      - SIM_SPEED=5
       - CELERY_BROKER=redis://redis:6379/0
     depends_on:
       redis:

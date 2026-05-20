@@ -23,7 +23,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN python -c "import pyspark; from pyspark.sql import SparkSession; SparkSession.builder.config('spark.jars.packages', f'org.apache.spark:spark-sql-kafka-0-10_2.12:{pyspark.__version__},org.postgresql:postgresql:42.7.3').getOrCreate()"
-
+ENV PYTHONPATH=/app
 
 # ==========================================
 # 3. COPIE DU CODE SOURCE

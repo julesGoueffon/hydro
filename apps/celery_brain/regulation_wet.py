@@ -2,11 +2,9 @@ import os
 import json
 import uuid
 from datetime import datetime, timezone
-import psycopg2
 from psycopg2.extras import RealDictCursor
-from confluent_kafka import Producer
-from celery import Celery
 
+from apps.celery_brain.common import get_kafka_producer, delivery_report, get_db_connection, app
 # Import de ta configuration centralisée
 from common.config import AppConfig
 
@@ -14,6 +12,8 @@ from common.config import AppConfig
 # CONFIGURATION MÉTIER
 # ==========================================
 SIM_SPEED = float(os.getenv("SIM_SPEED", 1.0))
+
+print(f"Vitesse d'execution : x{SIM_SPEED}")
 DEVICE_ID = "mock_node2_wet"  # Identifiant du node cible[cite: 2]
 
 # Cibles (Hardcodées pour le MVP)
@@ -25,37 +25,10 @@ MIXING_DELAY_REAL_SEC = 60.0
 MIXING_DELAY_SEC = MIXING_DELAY_REAL_SEC / SIM_SPEED
 BASE_PULSE_MS = 1000
 
-# Configuration Celery
-app = Celery('hydro_brain', broker=AppConfig.REDIS_URL)
 
-# Initialisation du Producer Kafka
-# 1. Configuration du Producer (confluent-kafka utilise un dictionnaire)
-kafka_conf = {
-    'bootstrap.servers': AppConfig.KAFKA_BOOTSTRAP_SERVERS,
-    'client.id': 'hydro_brain_worker'
-}
-
-# Initialisation
-producer = Producer(kafka_conf)
 # ==========================================
 # FONCTIONS UTILITAIRES
 # ==========================================
-def get_db_connection():
-    return psycopg2.connect(
-        host=AppConfig.DB_HOST,
-        database=AppConfig.DB_NAME,
-        user=AppConfig.DB_USER,
-        password=AppConfig.DB_PASS
-    )
-
-
-# Fonction de callback optionnelle (mais recommandée en indus) pour vérifier que le message est bien parti
-def delivery_report(err, msg):
-    if err is not None:
-        print(f"❌ Échec de l'envoi Kafka : {err}")
-    else:
-        print(f"✅ Ordre livré sur {msg.topic()} [{msg.partition()}]")
-
 
 def send_kafka_command(target_pump, duration_ms):
     """Pousse la commande dans Kafka avec confluent-kafka"""
@@ -68,20 +41,29 @@ def send_kafka_command(target_pump, duration_ms):
         "device_id": "mock_node2_wet"
     }
 
-    # confluent-kafka attend des bytes bruts, on encode le JSON
+    print(f"Préparation payload: {payload}")
     payload_bytes = json.dumps(payload).encode('utf-8')
 
-    # On utilise .produce() au lieu de .send()
-    producer.produce(
+    # On récupère le producer du worker actuel
+    prod = get_kafka_producer()
+
+    prod.produce(
         topic="command_stream",
         value=payload_bytes,
         callback=delivery_report
     )
+    print("produced")
 
-    # On force l'envoi immédiat (sinon confluent-kafka essaie de grouper les messages pour optimiser)
-    producer.flush()
+    # On force l'envoi avec un timeout de sécurité (très important !)
+    messages_restants = prod.flush(timeout=5.0)
+
+    if messages_restants > 0:
+        print(f"⚠️ ERREUR : {messages_restants} messages bloqués. Kafka (Redpanda) est injoignable !")
+    else:
+        print("flush OK")
 
     print(f"🚀 ORDRE PRÉPARÉ : {target_pump} pendant {duration_ms}ms (Cmd ID: {cmd_id})")
+    
 # ==========================================
 # LA TÂCHE PRINCIPALE (SÉQUENCEUR)
 # ==========================================
@@ -131,23 +113,34 @@ def evaluate_and_control():
         print(f"📊 ÉTAT : pH={current_ph:.2f} (Cible: {TARGET_PH}) | EC={current_ec:.2f} (Cible: {TARGET_EC})")
 
         # 3. LOGIQUE DE DÉCISION
-        if current_ec > (TARGET_EC + 0.3) or current_ph < 4.5 or current_ph > 8.0:
-            print("🚨 SÉCURITÉ : Valeurs critiques. Arrêt.")
-            return "EMERGENCY_STOP"
+        if SIM_SPEED<1.1 and ( current_ec > (TARGET_EC + 0.3) or current_ph < 4.5 or current_ph > 8.0):
+            print("🚨 SÉCURITÉ : Valeurs critiques. ##Arrêt.")
+            #return "EMERGENCY_STOP"
+        print(f"(TARGET_EC - current_ec) > 0.05 : {(TARGET_EC - current_ec)}" )
 
         if (TARGET_EC - current_ec) > 0.05:
+            print("ici")
             if last_pump != "pump_nutri_1":
+                print("iciA")
+
                 send_kafka_command("pump_nutri_1", BASE_PULSE_MS)
                 return "DOSE_NUTRI_A"
             else:
+                print("iciB")
+
                 send_kafka_command("pump_nutri_2", BASE_PULSE_MS)
                 return "DOSE_NUTRI_B"
+        print(f"abs(current_ph - TARGET_PH) > 0.15 { abs(current_ph - TARGET_PH)}")
 
         if abs(current_ph - TARGET_PH) > 0.15:
             if current_ph > TARGET_PH:
+                print("iciC")
+
                 send_kafka_command("pump_ph_minus", BASE_PULSE_MS)
                 return "DOSE_PH_MINUS"
             else:
+                print("iciD")
+
                 send_kafka_command("pump_ph_plus", BASE_PULSE_MS)
                 return "DOSE_PH_PLUS"
 

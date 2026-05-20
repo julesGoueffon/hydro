@@ -30,7 +30,7 @@ except Exception as e:
 
 # --- 2. Configuration de Redpanda/Kafka ---
 conf = {
-    'bootstrap.servers': 'localhost:9092',  # 'redpanda:9092' dans Docker
+    'bootstrap.servers': AppConfig.KAFKA_BOOTSTRAP_SERVERS,  # 'redpanda:9092' dans Docker
     'client.id': 'esp32-image-ingestor'
 }
 producer = Producer(conf)

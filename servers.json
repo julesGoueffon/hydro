@@ -1,0 +1,14 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "Greenhouse DB",
+            "Group": "Servers",
+            "Host": "greenhouse_db",
+            "Port": 5432,
+            "MaintenanceDB": "greenhouse",
+            "Username": "admin",
+            "SSLMode": "prefer",
+            "SavePassword": true
+        }
+    }
+}

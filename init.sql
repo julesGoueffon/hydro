@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS telemetry (
 SELECT create_hypertable('telemetry', 'time', if_not_exists => TRUE);
 
 
--- B. Table Météo (Spécifique pour correspondre EXACTEMENT à ton processor.py)
+-- B. Table Météo (Spécifique pour correspondre EXACTEMENT à ton weather_processor.py)
 CREATE TABLE IF NOT EXISTS weather_metrics (
     "time" TIMESTAMP WITH TIME ZONE NOT NULL, -- Doit correspondre à la String parsable de ton JSON
     sensor_name VARCHAR(50),
@@ -51,6 +51,13 @@ CREATE TABLE IF NOT EXISTS image_metrics (
     "timestamp" BIGINT NOT NULL,
     image_path VARCHAR(255),
     blur_score DOUBLE PRECISION
+);
+
+CREATE TABLE IF NOT EXISTS video_metrics (
+    sensor_name VARCHAR(50),
+    "timestamp" BIGINT NOT NULL,
+    video_path VARCHAR(255),
+    video_type VARCHAR(50)
 );
 
 -- E. Événements système (Alertes, pannes, etc.)

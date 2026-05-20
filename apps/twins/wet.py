@@ -10,6 +10,10 @@ PORT = 1883
 DEVICE_ID = "mock_node2_wet"
 SIM_SPEED = 0.5 # <--- 1.0 = normal, 5.0 = rapide, 10.0 = extrême
 
+# --- CONFIGURATION ---
+import os
+SIM_SPEED = float(os.getenv("SIM_SPEED", 1.0)) # <--- On récupère l'env ou 1.0 par défaut
+
 state = {
     "ph": 6.5,
     "ec": 1.2,
@@ -63,9 +67,14 @@ def physics_engine(speed=1.0):
 
 def execute_pump(cmd_id, target, duration_ms, client):
     state["relays"][target] = "ON"
-    client.publish("hydro/node2/acks", json.dumps({"cmd_id": cmd_id, "status": "STARTED"}))
+    client.publish("hydro/node2/acks", json.dumps({"cmd_id": cmd_id,
+                                                   "status": "STARTED",
+                                                   "target": target,
+                                                   "duration_ms": duration_ms}))
+    print("ici")
 
     time.sleep(duration_ms / 1000.0)
+    print("la")
 
     # L'impact des pompes est constant, c'est la vitesse de mélange qui change dans physics_engine
     impact = (duration_ms / 1000.0) * 0.15
@@ -77,7 +86,10 @@ def execute_pump(cmd_id, target, duration_ms, client):
         state["target_ec_adjustment"] += impact * 0.4
 
     state["relays"][target] = "OFF"
-    client.publish("hydro/node2/acks", json.dumps({"cmd_id": cmd_id, "status": "COMPLETED"}))
+    client.publish("hydro/node2/acks", json.dumps({"cmd_id": cmd_id,
+                                                   "status": "COMPLETED",
+                                                   "target": target,
+                                                   "duration_ms": duration_ms}))
 
 
 # --- LOGIQUE MQTT ET BOUCLES ---
@@ -114,6 +126,8 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
+        print(f"payload, {payload}")
+
         if payload.get("action") == "PULSE":
             threading.Thread(target=execute_pump, args=(
                 payload.get("cmd_id"),

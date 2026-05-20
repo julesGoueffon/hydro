@@ -39,6 +39,7 @@ def on_message(client, userdata, msg):
         if "telemetry" in topic:
             producer.produce('telemetry_stream', payload_str.encode('utf-8'), callback=delivery_report)
         elif "acks" in topic:
+            print(payload_str.encode('utf-8'))
             producer.produce('actuator_stream', payload_str.encode('utf-8'), callback=delivery_report)
         producer.poll(0)
     except Exception as e:

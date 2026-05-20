@@ -76,6 +76,15 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
+      # Désactive la demande de mot de passe maître au lancement
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      # Force le mode serveur pour charger les JSON
+      PGADMIN_CONFIG_SERVER_MODE: 'True'
+    volumes:
+      # Utilise ./ pour être sûr du chemin relatif sous Windows
+      - ./servers.json:/pgadmin4/servers.json
+      # On ajoute un volume nommé pour que tes préférences restent
+      - pgadmin_data:/var/lib/pgadmin
     ports:
       - "8080:80"
     depends_on:
@@ -123,3 +132,6 @@ services:
     command: redis-server --save 60 1 --loglevel warning
     volumes:
       - ./redis_data:/data
+
+volumes:
+  pgadmin_data:

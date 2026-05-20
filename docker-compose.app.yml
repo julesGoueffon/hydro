@@ -44,13 +44,13 @@ services:
         condition: service_completed_successfully
 
   # 3. Le processeur Spark Télémétrie
-  spark_global:
+  spark_telemetry:
     build: .
-    container_name: spark_global
+    container_name: spark_telemetry
     environment:
       - PYTHONPATH=/app
     # Plus besoin de spark-submit, PySpark gère tout en interne !
-    command: python apps/spark_processor/main_processor.py
+    command: python apps/msg_processor/telemetry_processor.py
     depends_on:
       postgres:
         condition: service_started
@@ -58,8 +58,38 @@ services:
         condition: service_started
       kafka_setup:
         condition: service_completed_successfully
+
+  # 4. Le processeur Spark Images
+  spark_images:
+    build: .
+    container_name: spark_images
+    environment:
+      - PYTHONPATH=/app
+    command: python apps/msg_processor/image_processor.py
+    depends_on:
+      postgres:
+        condition: service_started
+      redpanda:
+        condition: service_started
       minio_storage:
         condition: service_started
+      kafka_setup:
+        condition: service_completed_successfully
+
+  # 5. Le processeur Spark Météo
+  spark_weather:
+    build: .
+    container_name: spark_weather
+    environment:
+      - PYTHONPATH=/app
+    command: python apps/msg_processor/processor.py
+    depends_on:
+      postgres:
+        condition: service_started
+      redpanda:
+        condition: service_started
+      kafka_setup:
+        condition: service_completed_successfully
 
 # 4 Le worker qui exécute la tâche (le cerveau)
   celery_worker:

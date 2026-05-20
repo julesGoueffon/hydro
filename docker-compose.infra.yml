@@ -2,7 +2,7 @@
 # Il peut être lancé seul pour le développement local.
 
 services:
-  # Portainer : Pour gérer tes containers
+  # Portainer : Pour gérer tes containers via une belle interface web
   portainer:
     image: portainer/portainer-ce:latest
     container_name: portainer
@@ -13,51 +13,22 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./portainer_data:/data
 
-  # Mosquitto : Le broker MQTT
+  # Mosquitto : Le système nerveux central (MQTT)
   mosquitto:
     image: eclipse-mosquitto:latest
     container_name: mosquitto
+    restart: always
     ports:
       - "1883:1883"
     volumes:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
 
-  # Redpanda : Kafka ultra-léger (Commande corrigée pour éviter le bug d'argument)
-  redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:v23.2.1
-    container_name: redpanda
-    command: >
-      redpanda start 
-      --smp 1 
-      --memory 1G 
-      --reserve-memory 0M 
-      --overprovisioned 
-      --node-id 0 
-      --check=false 
-      --kafka-addr PLAINTEXT://0.0.0.0:9092 
-      --advertise-kafka-addr PLAINTEXT://redpanda:9092
-    ports:
-      - "9092:9092"
-
-  # Initialisation des Topics Kafka
-
-  # Initialisation des Topics Kafka via script Bash
-  kafka_setup:
-    image: docker.redpanda.com/redpandadata/redpanda:v23.2.1
-    container_name: kafka_setup
-    depends_on:
-      - redpanda
-    volumes:
-      # On monte le script créé localement dans le conteneur
-      - ./setup_kafka.sh:/setup_kafka.sh
-    # On exécute le script avec bash explicitement (pas besoin de chmod sur Windows)
-    entrypoint: [ "bash", "/setup_kafka.sh" ]
-
-  # PostgreSQL + TimescaleDB
+  # PostgreSQL + TimescaleDB : La mémoire à long terme et les configurations
   postgres:
     image: timescale/timescaledb:latest-pg15
     container_name: greenhouse_db
+    restart: always
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password
@@ -68,7 +39,7 @@ services:
     ports:
       - "5432:5432"
 
-  # pgAdmin
+  # pgAdmin : Pour fouiller dans ta base de données à la souris
   pgadmin:
     image: dpage/pgadmin4
     container_name: greenhouse-pgadmin
@@ -81,10 +52,11 @@ services:
     depends_on:
       - postgres
 
-  # MinIO
+  # MinIO : Le coffre-fort pour tes images et vidéos
   minio_storage:
     image: minio/minio
     container_name: minio_storage
+    restart: always
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -95,31 +67,14 @@ services:
       - ./minio_data:/data
     command: server /data --console-address ":9001"
 
-  # Grafana
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_AUTH_ANONYMOUS_ENABLED=true # Permet de voir sans se loguer (optionnel)
-    volumes:
-      # 1. Persistance de la DB interne (utilisateurs, sessions)
-      - ./grafana/data:/var/lib/grafana
-      # 2. Provisioning (DataSource et Dashboards automatiques)
-      - ./grafana/provisioning:/etc/grafana/provisioning
-    depends_on:
-      - postgres
-
-  # redis
+  # Redis : Le broker ultra-léger pour les tâches Celery (et le cache Temps Réel)
   redis:
     image: redis:7-alpine
     container_name: redis_broker
     restart: always
     ports:
       - "6379:6379"
-    # Optionnel: on ajoute une persistance légère pour ne pas perdre les tâches en attente si le container crash
+    # Persistance légère pour ne pas perdre les tâches si le container crash
     command: redis-server --save 60 1 --loglevel warning
     volumes:
       - ./redis_data:/data

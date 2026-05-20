@@ -50,7 +50,7 @@ services:
     environment:
       - PYTHONPATH=/app
     # Plus besoin de spark-submit, PySpark gère tout en interne !
-    command: python apps/spark_processor/telemetry_processor.py
+    command: python apps/msg_processor/telemetry_processor.py
     depends_on:
       postgres:
         condition: service_started
@@ -65,7 +65,7 @@ services:
     container_name: spark_images
     environment:
       - PYTHONPATH=/app
-    command: python apps/spark_processor/image_processor.py
+    command: python apps/msg_processor/image_processor.py
     depends_on:
       postgres:
         condition: service_started
@@ -82,7 +82,7 @@ services:
     container_name: spark_weather
     environment:
       - PYTHONPATH=/app
-    command: python apps/spark_processor/processor.py
+    command: python apps/msg_processor/processor.py
     depends_on:
       postgres:
         condition: service_started

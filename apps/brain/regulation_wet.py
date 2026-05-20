@@ -4,8 +4,8 @@ import uuid
 from datetime import datetime, timezone
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from confluent_kafka import Producer
 from celery import Celery
+import paho.mqtt.publish as publish
 
 # Import de ta configuration centralisée
 from common.config import AppConfig
@@ -14,9 +14,9 @@ from common.config import AppConfig
 # CONFIGURATION MÉTIER
 # ==========================================
 SIM_SPEED = float(os.getenv("SIM_SPEED", 1.0))
-DEVICE_ID = "mock_node2_wet"  # Identifiant du node cible[cite: 2]
+DEVICE_ID = "mock_node2_wet"  # Identifiant du node cible
 
-# Cibles (Hardcodées pour le MVP)
+# Cibles (Hardcodées pour le MVP, idéalement lues en BDD plus tard)
 TARGET_PH = 6.0
 TARGET_EC = 1.4
 
@@ -25,18 +25,9 @@ MIXING_DELAY_REAL_SEC = 60.0
 MIXING_DELAY_SEC = MIXING_DELAY_REAL_SEC / SIM_SPEED
 BASE_PULSE_MS = 1000
 
-# Configuration Celery
+# Configuration Celery (Redis reste notre broker pour les tâches)
 app = Celery('hydro_brain', broker=AppConfig.REDIS_URL)
 
-# Initialisation du Producer Kafka
-# 1. Configuration du Producer (confluent-kafka utilise un dictionnaire)
-kafka_conf = {
-    'bootstrap.servers': AppConfig.KAFKA_BOOTSTRAP_SERVERS,
-    'client.id': 'hydro_brain_worker'
-}
-
-# Initialisation
-producer = Producer(kafka_conf)
 # ==========================================
 # FONCTIONS UTILITAIRES
 # ==========================================
@@ -48,40 +39,38 @@ def get_db_connection():
         password=AppConfig.DB_PASS
     )
 
-
-# Fonction de callback optionnelle (mais recommandée en indus) pour vérifier que le message est bien parti
-def delivery_report(err, msg):
-    if err is not None:
-        print(f"❌ Échec de l'envoi Kafka : {err}")
-    else:
-        print(f"✅ Ordre livré sur {msg.topic()} [{msg.partition()}]")
-
-
-def send_kafka_command(target_pump, duration_ms):
-    """Pousse la commande dans Kafka avec confluent-kafka"""
+def send_mqtt_command(target_pump, duration_ms):
+    """Pousse la commande directement sur le broker MQTT"""
     cmd_id = str(uuid.uuid4())
     payload = {
         "action": "PULSE",
         "cmd_id": cmd_id,
         "target": target_pump,
-        "duration_ms": duration_ms,
-        "device_id": "mock_node2_wet"
+        "duration_ms": duration_ms
     }
 
-    # confluent-kafka attend des bytes bruts, on encode le JSON
-    payload_bytes = json.dumps(payload).encode('utf-8')
+    # On extrait l'ID du noeud pour construire le bon topic MQTT (ex: mock_node2_wet -> node2)
+    try:
+        node_id = DEVICE_ID.split('_')[1]
+    except IndexError:
+        node_id = DEVICE_ID
 
-    # On utilise .produce() au lieu de .send()
-    producer.produce(
-        topic="command_stream",
-        value=payload_bytes,
-        callback=delivery_report
-    )
+    topic = f"hydro/{node_id}/commands"
+    broker_host = getattr(AppConfig, "MQTT_BROKER", "mosquitto")
 
-    # On force l'envoi immédiat (sinon confluent-kafka essaie de grouper les messages pour optimiser)
-    producer.flush()
+    try:
+        # publish.single ouvre, publie et ferme la connexion MQTT d'un coup
+        publish.single(
+            topic,
+            payload=json.dumps(payload),
+            hostname=broker_host,
+            port=1883
+        )
+        print(f"🚀 ORDRE MQTT ENVOYÉ : {target_pump} ({duration_ms}ms) sur le topic '{topic}'")
+    except Exception as e:
+        print(f"❌ Échec de l'envoi MQTT : {e}")
 
-    print(f"🚀 ORDRE PRÉPARÉ : {target_pump} pendant {duration_ms}ms (Cmd ID: {cmd_id})")
+
 # ==========================================
 # LA TÂCHE PRINCIPALE (SÉQUENCEUR)
 # ==========================================
@@ -118,7 +107,7 @@ def evaluate_and_control():
             GROUP BY metric
         """, (DEVICE_ID,))
 
-        metrics = {row["metric"]: row["avg_val"] for row in cursor.fetchall()}
+        metrics = {row["metric"]: row["avg_val"] for row in cursor.fetchall() if row["avg_val"] is not None}
 
         if "ph" not in metrics or "ec" not in metrics:
             print("⚠️ Pas assez de données pour prendre une décision.")
@@ -137,18 +126,18 @@ def evaluate_and_control():
 
         if (TARGET_EC - current_ec) > 0.05:
             if last_pump != "pump_nutri_1":
-                send_kafka_command("pump_nutri_1", BASE_PULSE_MS)
+                send_mqtt_command("pump_nutri_1", BASE_PULSE_MS)
                 return "DOSE_NUTRI_A"
             else:
-                send_kafka_command("pump_nutri_2", BASE_PULSE_MS)
+                send_mqtt_command("pump_nutri_2", BASE_PULSE_MS)
                 return "DOSE_NUTRI_B"
 
         if abs(current_ph - TARGET_PH) > 0.15:
             if current_ph > TARGET_PH:
-                send_kafka_command("pump_ph_minus", BASE_PULSE_MS)
+                send_mqtt_command("pump_ph_minus", BASE_PULSE_MS)
                 return "DOSE_PH_MINUS"
             else:
-                send_kafka_command("pump_ph_plus", BASE_PULSE_MS)
+                send_mqtt_command("pump_ph_plus", BASE_PULSE_MS)
                 return "DOSE_PH_PLUS"
 
         print("✅ STABLE. Aucune action.")

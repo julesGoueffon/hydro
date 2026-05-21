@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
-import boto3
+import io
 import psycopg2
+from minio import Minio
 from common.config import AppConfig
 
 
@@ -16,46 +17,46 @@ def process_and_save_image_from_minio(sensor_name: str, timestamp: int, image_ke
 
     # --- 1. LECTURE DEPUIS MINIO (EN MÉMOIRE) ---
     try:
-        s3 = boto3.client(
-            's3',
-            endpoint_url=f"http://{AppConfig.MINIO_ENDPOINT}",  # ex: minio:9000
-            aws_access_key_id=AppConfig.MINIO_ACCESS_KEY,
-            aws_secret_access_key=AppConfig.MINIO_SECRET_KEY
+        minio_client = Minio(
+            AppConfig.MINIO_ENDPOINT,
+            access_key=AppConfig.MINIO_ACCESS_KEY,
+            secret_key=AppConfig.MINIO_SECRET_KEY,
+            secure=False
         )
 
-        response = s3.get_object(Bucket=AppConfig.MINIO_BUCKET_NAME, Key=image_key)
-        image_bytes = response['Body'].read()
+
+        response = minio_client.get_object(AppConfig.MINIO_BUCKET_NAME, image_key)
+        image_bytes = response.read()
+        response.close()
+        response.release_conn()
 
         # --- 2. TRAITEMENT OPENCV ---
-        # On convertit les bytes directement en image OpenCV sans toucher au disque dur
         nparr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
 
         if img is not None:
-            # Variance du Laplacien (plus le score est élevé, plus c'est net)
             blur_score = float(cv2.Laplacian(img, cv2.CV_64F).var())
         else:
             print(f"⚠️ Image {image_key} corrompue ou illisible.")
 
     except Exception as e:
         print(f"❌ Erreur lors de la lecture MinIO ou calcul OpenCV: {e}")
-        # On continue quand même pour insérer la ligne avec un score de 0.0
 
     # --- 3. INSERTION DANS POSTGRESQL ---
     try:
         conn = psycopg2.connect(
-            host=AppConfig.DB_HOST,  # ex: greenhouse_db
+            host=AppConfig.DB_HOST,
             database=AppConfig.DB_NAME,
             user=AppConfig.DB_USER,
             password=AppConfig.DB_PASS
         )
         cursor = conn.cursor()
 
+        # timestamp est un entier Unix, on l'insère directement en bigint
         insert_query = """
             INSERT INTO image_metrics (sensor_name, timestamp, image_path, blur_score)
-            VALUES (%s, to_timestamp(%s), %s, %s)
+            VALUES (%s, %s, %s, %s)
         """
-        # Note: image_path garde le chemin "logique" (ex: images/photo_123.jpg)
         cursor.execute(insert_query, (sensor_name, timestamp, image_key, blur_score))
 
         conn.commit()

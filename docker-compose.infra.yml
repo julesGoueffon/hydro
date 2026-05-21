@@ -62,9 +62,9 @@ services:
       - postgres
 
   # MinIO : Le coffre-fort pour tes images et vidéos
-  minio_storage:
+  minio-storage:
     image: minio/minio
-    container_name: minio_storage
+    container_name: minio-storage
     restart: always
     ports:
       - "9000:9000"
@@ -72,6 +72,8 @@ services:
     environment:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: password
+      MINIO_SERVER_URL: "http://127.0.0.1:9000"
+
     volumes:
       - ./minio_data:/data
     command: server /data --console-address ":9001"

@@ -23,6 +23,22 @@ export const hydroApi = {
     return res.json();
   },
 
+  // --- Configuration & Mode Système ---
+    getConfig: async () => {
+        // Optionnel : Il faudrait une route GET /api/config côté FastAPI pour lire l'état au démarrage
+        const response = await fetch(`${API_BASE_URL}/config`);
+        return response.json();
+    },
+
+    updateConfig: async (config: { target_ph: number, target_ec: number, system_mode: string }) => {
+        const response = await fetch(`${API_BASE_URL}/config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        });
+        return response.json();
+    },
+
   // --- CONTRÔLE-COMMANDE ---
   sendCommand: async (target: string, duration_ms: number, device_id: string = "node2") => {
     const res = await fetch(`${API_BASE_URL}/command/override`, {

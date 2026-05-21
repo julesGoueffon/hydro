@@ -23,8 +23,8 @@ class AppConfig:
     LON = os.getenv('CITY_LON', '3.57')
 
     # --- STORAGE (MINIO) ---
-    # Remplacé 'localhost:9000' par 'minio_storage:9000'
-    MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'minio_storage:9000')
+    # Remplacé 'localhost:9000' par 'minio-storage:9000'
+    MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'minio-storage:9000')
     MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'admin')
     MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'password')
     MINIO_BUCKET_NAME = os.getenv('MINIO_BUCKET_NAME', 'images')

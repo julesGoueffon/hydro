@@ -77,4 +77,29 @@ CREATE TABLE IF NOT EXISTS sensor_calibrations (
     slope DOUBLE PRECISION NOT NULL,
     intercept DOUBLE PRECISION NOT NULL,
     last_calibrated TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);  
+);
+
+-- G. Configuration système (Les cibles de la serre)
+CREATE TABLE IF NOT EXISTS system_config (
+    id SERIAL PRIMARY KEY,
+    target_ph DOUBLE PRECISION NOT NULL DEFAULT 6.0,
+    target_ec DOUBLE PRECISION NOT NULL DEFAULT 1.4,
+    mode_auto BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insertion des valeurs par défaut pour que l'ID 1 existe toujours
+-- (Indispensable pour que Celery ne crashe pas au démarrage)
+INSERT INTO system_config (id, target_ph, target_ec, mode_auto)
+VALUES (1, 6.0, 1.4, TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+
+CREATE TABLE IF NOT EXISTS calibration_history (
+    id SERIAL PRIMARY KEY,
+    "timestamp" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    sensor_id VARCHAR(50) NOT NULL,
+    old_intercept DOUBLE PRECISION,
+    new_intercept DOUBLE PRECISION,
+    buffer_value DOUBLE PRECISION
+);

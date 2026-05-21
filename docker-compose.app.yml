@@ -1,121 +1,93 @@
-# Ce fichier gère UNIQUEMENT ton code Python (FastAPI, Spark, Bridge).
-# Il inclut automatiquement l'infrastructure avant de démarrer.
+# Ce fichier gère UNIQUEMENT ton code applicatif (Python + React).
+# Il s'attend à ce que docker-compose.infra.yml tourne déjà.
 
 include:
   - docker-compose.infra.yml
 
 services:
   # ========================================================
-  # TES SERVICES PYTHON (MICRO-SERVICES)
+  # 1. L'API BACKEND (FastAPI)
   # ========================================================
-
-  # 1. L'API Backend (FastAPI)
   fastapi_backend:
     build: .
-    container_name: ingestion_image
-    # L'astuce "python -m" garantit qu'on trouve le module même si le PATH système est mal configuré
-    command: python -m uvicorn apps.ingestion_image.image_main:app --host 0.0.0.0 --port 8000
+    container_name: fastapi_backend
+    restart: on-failure
+    # Assure-toi que ce chemin pointe vers ton bon fichier main.py FastAPI
+    command: python -m uvicorn apps.rest_api.main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
     depends_on:
       postgres:
         condition: service_started
-      redpanda:
-        condition: service_started
-      minio_storage:
-        condition: service_started
-      kafka_setup:
-        condition: service_completed_successfully
-
-  # 2. Le Bridge MQTT -> Kafka
-  mqtt_bridge:
-    build: .
-    container_name: mqtt_bridge
-    environment:
-      - PYTHONPATH=/app
-    # On lance un simple script Python
-    command: python apps/bridge/bridge.py
-    depends_on:
       mosquitto:
         condition: service_started
-      redpanda:
+      minio-storage:
         condition: service_started
-      kafka_setup:
-        condition: service_completed_successfully
 
-  # 3. Le processeur Spark Télémétrie
-  spark_telemetry:
+  # ========================================================
+  # 2. L'INGESTION MQTT -> BDD (Le travailleur de l'ombre)
+  # ========================================================
+  mqtt_worker:
     build: .
-    container_name: spark_telemetry
+    container_name: mqtt_worker
+    restart: on-failure
     environment:
+      - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
-    # Plus besoin de spark-submit, PySpark gère tout en interne !
-    command: python apps/msg_processor/telemetry_processor.py
+    # Le script qui écoute Mosquitto en permanence et écrit dans Postgres
+    command: python apps/msg_processor/main_mqtt_processor.py
     depends_on:
       postgres:
         condition: service_started
-      redpanda:
+      mosquitto:
         condition: service_started
-      kafka_setup:
-        condition: service_completed_successfully
 
-  # 4. Le processeur Spark Images
-  spark_images:
-    build: .
-    container_name: spark_images
-    environment:
-      - PYTHONPATH=/app
-    command: python apps/msg_processor/image_processor.py
-    depends_on:
-      postgres:
-        condition: service_started
-      redpanda:
-        condition: service_started
-      minio_storage:
-        condition: service_started
-      kafka_setup:
-        condition: service_completed_successfully
-
-  # 5. Le processeur Spark Météo
-  spark_weather:
-    build: .
-    container_name: spark_weather
-    environment:
-      - PYTHONPATH=/app
-    command: python apps/msg_processor/processor.py
-    depends_on:
-      postgres:
-        condition: service_started
-      redpanda:
-        condition: service_started
-      kafka_setup:
-        condition: service_completed_successfully
-
-# 4 Le worker qui exécute la tâche (le cerveau)
+  # ========================================================
+  # 3. LE CERVEAU ASYNCHRONE (Celery Workers)
+  # ========================================================
   celery_worker:
     build: .
-    container_name: control_worker
-    # Assure-toi que "control_worker" correspond au chemin de ton fichier Python
-    command: celery -A apps.celery_brain.regulation_wet worker --loglevel=info
+    container_name: celery_worker
+    restart: on-failure
+    # On écoute les tâches de contrôle ET de vidéo via "common"
+    command: celery -A apps.celery_brain.worker worker --loglevel=info
     environment:
       - SIM_SPEED=5
+      - CELERY_BROKER=redis://redis_broker:6379/0
     depends_on:
       postgres:
         condition: service_started
-      redpanda:
-        condition: service_started
       redis:
         condition: service_started
 
-
-  # 5 Le scheduler qui déclenche la tâche à intervalle régulier (le métronome)
   celery_beat:
     build: .
-    container_name: control_beat
-    command: celery -A apps.celery_brain.regulation_wet beat --loglevel=info
+    container_name: celery_beat
+    restart: on-failure
+    # Le métronome qui déclenche les tâches à intervalle régulier
+    command: celery -A apps.celery_brain.worker beat --loglevel=info
     environment:
       - SIM_SPEED=5
-      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BROKER=redis://redis_broker:6379/0
     depends_on:
+      postgres:
+        condition: service_started
       redis:
         condition: service_started
+
+  # ========================================================
+  # 4. L'INTERFACE UTILISATEUR (React + Nginx)
+  # ========================================================
+  hydro_frontend:
+    build:
+      context: ./hydro-frontend
+      dockerfile: Dockerfile
+    container_name: hydro_frontend
+    restart: always
+    ports:
+      # Port 80 exposé : Tu taperas juste l'IP du Pi dans ton navigateur
+      - "80:80"
+    depends_on:
+      - fastapi_backend

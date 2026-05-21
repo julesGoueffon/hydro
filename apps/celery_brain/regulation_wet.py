@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import uuid
@@ -5,9 +6,10 @@ from datetime import datetime, timezone
 import paho.mqtt.publish as publish
 from psycopg2.extras import RealDictCursor
 
-from apps.celery_brain.common import get_db_connection, app
+from apps.celery_brain.common import get_db_connection
+from apps.celery_brain.worker import app
 from common.config import AppConfig
-
+logger = logging.getLogger(__name__)
 # ==========================================
 # CONFIGURATION MÉTIER
 # ==========================================
@@ -45,11 +47,13 @@ def send_mqtt_command(target_pump, duration_ms):
     except Exception as e:
         print(f"⚠️ ERREUR MQTT : Impossible d'envoyer l'ordre à {target_pump}. {e}")
 
+
 # ==========================================
 # LA TÂCHE PRINCIPALE (SÉQUENCEUR)
 # ==========================================
 @app.task(name="evaluate_and_control")
 def evaluate_and_control():
+    logger.info(f"🧠 Démarrage évaluation pour {DEVICE_ID}")
     print(f"🧠 Démarrage évaluation pour {DEVICE_ID} (SIM_SPEED={SIM_SPEED})")
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
@@ -59,13 +63,14 @@ def evaluate_and_control():
         cursor.execute("SELECT target_ph, target_ec, mode_auto FROM system_config WHERE id = 1")
         config = cursor.fetchone()
 
+
         if not config:
             print("⚠️ Configuration introuvable dans Postgres. Annulation.")
             return "NO_CONFIG"
 
-        if not config.get("mode_auto", True):
-            print("⏸️ Système en mode MANUEL/MAINTENANCE. Le cerveau Celery est en pause.")
-            return "MANUAL_MODE"
+        if config and config["system_mode"] != "AUTO":
+            print(f"⏸️ Système en mode {config['system_mode']}. Régulation automatique suspendue.")
+            return f"SUSPENDED_{config['system_mode']}"
 
         target_ph = config["target_ph"]
         target_ec = config["target_ec"]
@@ -109,7 +114,7 @@ def evaluate_and_control():
         print(f"📊 ÉTAT : pH={current_ph:.2f} (Cible: {target_ph}) | EC={current_ec:.2f} (Cible: {target_ec})")
 
         # 3. LOGIQUE DE DÉCISION & SÉCURITÉ
-        if SIM_SPEED < 1.1 and (current_ec > (target_ec + 0.3) or current_ph < 4.5 or current_ph > 8.0):
+        if SIM_SPEED < 1.1 and (current_ec > (target_ec + 0.7) or current_ph < 4.5 or current_ph > 12.0):
             print("🚨 SÉCURITÉ : Valeurs critiques. Système bloqué.")
             # Optionnel : send_mqtt_command("EMERGENCY_STOP", 0)
             return "EMERGENCY_STOP"
@@ -142,10 +147,3 @@ def evaluate_and_control():
         cursor.close()
         conn.close()
 
-# Scheduler
-app.conf.beat_schedule = {
-    'run-control-loop-frequently': {
-        'task': 'evaluate_and_control',
-        'schedule': max(1.0, 60.0 / SIM_SPEED),
-    },
-}

@@ -52,15 +52,22 @@ def physics_engine(speed=1.0):
 
 
 def execute_pump(cmd_id, target, duration_ms, client):
+    print(f"💧 POMPE ACTIVÉE : {target} pour {duration_ms}ms")
     state["relays"][target] = "ON"
-    # CORRECTION : Topic dynamique
-    client.publish(f"hydro/{DEVICE_ID}/acks", json.dumps({
-        "cmd_id": cmd_id, "status": "STARTED", "target": target, "duration_ms": duration_ms
+
+    # 1. ÉVÉNEMENT : DÉMARRAGE (Topic unifié)
+    client.publish(f"hydro/{DEVICE_ID}/actuators", json.dumps({
+        "cmd_id": cmd_id,
+        "actuator_id": target,  # Harmonisé avec le back
+        "action": "PULSE",
+        "status": "STARTED",
+        "duration_ms": duration_ms
     }))
 
-    print(f"💧 POMPE ACTIVÉE : {target} pour {duration_ms}ms")
+    # Pause (Simulation du temps de pompage)
     time.sleep(duration_ms / 1000.0)
 
+    # Simulation Moteur Physique
     impact = (duration_ms / 1000.0) * 0.15
     if target == "pump_ph_minus":
         state["target_ph_adjustment"] -= impact
@@ -70,10 +77,16 @@ def execute_pump(cmd_id, target, duration_ms, client):
         state["target_ec_adjustment"] += impact * 0.4
 
     state["relays"][target] = "OFF"
-    client.publish(f"hydro/{DEVICE_ID}/acks", json.dumps({
-        "cmd_id": cmd_id, "status": "COMPLETED", "target": target, "duration_ms": duration_ms
+
+    # 2. ÉVÉNEMENT : FIN (Même topic, statut différent)
+    client.publish(f"hydro/{DEVICE_ID}/actuators", json.dumps({
+        "cmd_id": cmd_id,
+        "actuator_id": target,
+        "action": "PULSE",
+        "status": "COMPLETED",
+        "duration_ms": duration_ms
     }))
-    print(f"✅ POMPE ARRÊTÉE : {target}")
+    print(f"🛑 Fin amorçage {target}")
 
 
 def telemetry_loop(client):
@@ -105,17 +118,34 @@ def on_connect(client, userdata, flags, rc, properties=None):
     client.subscribe(f"hydro/{DEVICE_ID}/commands")
 
 
+
 def on_message(client, userdata, msg):
     try:
         payload = json.loads(msg.payload.decode())
-        print(f"📥 Ordre reçu : {payload}")
+        print(f"📥 Ordre reçu via MQTT : {payload}")
 
-        if payload.get("action") == "PULSE":
+        action = payload.get("action")
+        target = payload.get("target")
+
+        # 1. Gestion de l'ARRÊT D'URGENCE
+        if action == "STOP" or target == "ALL_STOP":
+            print("🚨 ARRÊT D'URGENCE REÇU : Coupure immédiate de toutes les pompes !")
+            for pump in state["relays"]:
+                state["relays"][pump] = "OFF"
+            # Ici, sur l'ESP32 en C++, ce serait : digitalWrite(RELAY_PIN, LOW);
+            return
+
+        # 2. Gestion de l'amorçage manuel (PULSE)
+        if action == "PULSE":
             threading.Thread(target=execute_pump, args=(
-                payload.get("cmd_id"), payload.get("target"), payload.get("duration_ms", 0), client
+                payload.get("cmd_id"),
+                target,
+                payload.get("duration_ms", 0),
+                client
             )).start()
+
     except Exception as e:
-        print(f"❌ Erreur payload: {e}")
+        print(f"❌ Erreur de décodage du payload: {e}")
 
 
 if __name__ == "__main__":

@@ -60,7 +60,8 @@ def evaluate_and_control():
 
     try:
         # 0. LECTURE DES CONSIGNES DEPUIS LA BDD (Dynamique via l'IHM)
-        cursor.execute("SELECT target_ph, target_ec, mode_auto FROM system_config WHERE id = 1")
+        # La nouvelle requête corrigée :
+        cursor.execute("SELECT target_ph, target_ec, system_mode FROM system_config WHERE id = 1")
         config = cursor.fetchone()
 
 
@@ -76,12 +77,12 @@ def evaluate_and_control():
         target_ec = config["target_ec"]
 
         # 1. VERROU : VÉRIFICATION DU DÉLAI DE MÉLANGE
-        cursor.execute("""
-                       SELECT time, actuator_id, action
+        cursor.execute(cursor.execute("""
+                       SELECT time, actuator_id, status
                        FROM actuator_logs
-                       WHERE action = 'COMPLETED'
+                       WHERE status = 'COMPLETED'
                        ORDER BY time DESC LIMIT 1
-                       """)
+                       """))
         last_action = cursor.fetchone()
 
         if last_action:

@@ -1,6 +1,7 @@
 import json
 import time
 import psycopg2
+import psycopg2.extras
 from psycopg2 import pool
 import paho.mqtt.client as mqtt
 from common.config import AppConfig
@@ -61,82 +62,95 @@ def handle_weather(client, userdata, msg):
         print(f"❌ Erreur Météo : {e}")
         if 'conn' in locals(): db_pool.putconn(conn)
 
-
 def handle_actuator(client, userdata, msg):
     try:
-        data = json.loads(msg.payload.decode('utf-8'))
+        payload = json.loads(msg.payload.decode('utf-8'))
 
-        # Le context manager s'occupe du getconn et du putconn automatiquement
         with acquire_conn(db_pool) as conn:
             with conn.cursor() as cursor:
+                # On ajoute la colonne status à la requête
                 query = """
-                        INSERT INTO actuator_logs (actuator_id, status, duration_ms, triggered_by)
-                        VALUES (%s, %s, %s, %s) \
+                        INSERT INTO actuator_logs (time, actuator_id, action, status, duration_ms, trigger_source)
+                        VALUES (NOW(), %s, %s, %s, %s, %s)
                         """
                 cursor.execute(query, (
-                    data.get("target"),
-                    data.get("status"),
-                    data.get("duration_ms"),
-                    "auto_backend"
+                    payload.get("actuator_id"),
+                    payload.get("action", "PULSE"),
+                    payload.get("status", "UNKNOWN"), # STARTED ou COMPLETED
+                    payload.get("duration_ms", 0),
+                    "edge_device"
                 ))
                 conn.commit()
 
-        print(f"⚙️ [Actionneur] {data.get('target')} | {data.get('status')}")
+        print(f"✅ [Actionneur] Événement {payload.get('status')} pour {payload.get('actuator_id')} historisé !")
     except Exception as e:
-        print(f"❌ Erreur Actionneur : {e}")
+        print(f"❌ Erreur SQL Actionneur : {e}")
 
 
 def handle_telemetry(client, userdata, msg):
     try:
         data = json.loads(msg.payload.decode('utf-8'))
         device_id = data.get("device_id", "unknown")
+        metric = data.get("metric")
+        raw_value = data.get("value")
 
-        raw_ph = data.get("ph")
-        raw_ec = data.get("ec")
+        if not metric or raw_value is None:
+            return
 
-        # Récupération des connexions via le pool sécurisé
         with acquire_conn(db_pool) as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
-                # 1. Lecture des coefficients de calibration du pH
+
+                # 1. Vérifier le mode actuel du système
+                cursor.execute("SELECT system_mode FROM system_config WHERE id = 1")
+                config_row = cursor.fetchone()
+                system_mode = config_row["system_mode"] if config_row else "AUTO"
+
+                final_value = float(raw_value)
+
+                # --- TRAITEMENT SPÉCIFIQUE : SONDES ANALOGIQUES (pH / EC) ---
+                if metric in ["ph", "ec"]:
+
+                    # A. Sécurité absolue : on stocke TOUJOURS la tension brute
+                    cursor.execute("""
+                                   INSERT INTO telemetry (time, device_id, metric, value)
+                                   VALUES (NOW(), %s, %s, %s)
+                                   """, (device_id, f"{metric}_raw", final_value))
+
+                    # B. Si on est en maintenance (Calibration en cours)
+                    if system_mode == "MAINTENANCE":
+                        # On stocke sous un nom spécifique pour l'écran de calibration du front
+                        cursor.execute("""
+                                       INSERT INTO telemetry (time, device_id, metric, value)
+                                       VALUES (NOW(), %s, %s, %s)
+                                       """, (device_id, f"{metric}_calibration", final_value))
+                        conn.commit()
+                        print(f"🔧 [Calibration] {device_id} | Tension {metric}: {final_value:.2f}")
+                        return  # FIN DU TRAITEMENT : On ne pollue pas la métrique principale
+
+                    # C. Si on est en mode normal, on applique l'équation de droite
+                    cursor.execute("""
+                                   SELECT slope, intercept
+                                   FROM sensor_calibrations
+                                   WHERE sensor_id = %s
+                                   """, (f"{device_id}_{metric}",))
+                    cal = cursor.fetchone() or {"slope": 1.0, "intercept": 0.0}
+
+                    # Calcul de la valeur finale calibrée
+                    final_value = (final_value * cal["slope"]) + cal["intercept"]
+
+                # --- INSERTION CLASSIQUE ---
+                # (S'applique aux températures directes, ou au pH/EC fraîchement calculés)
                 cursor.execute("""
-                               SELECT slope, intercept
-                               FROM sensor_calibrations
-                               WHERE sensor_id = %s
-                               """, (f"{device_id}_ph",))
-                cal_ph = cursor.fetchone() or {"slope": 1.0, "intercept": 0.0}
+                               INSERT INTO telemetry (time, device_id, metric, value)
+                               VALUES (NOW(), %s, %s, %s)
+                               """, (device_id, metric, final_value))
 
-                # 2. Lecture des coefficients de calibration de l'EC
-                cursor.execute("""
-                               SELECT slope, intercept
-                               FROM sensor_calibrations
-                               WHERE sensor_id = %s
-                               """, (f"{device_id}_ec",))
-                cal_ec = cursor.fetchone() or {"slope": 1.0, "intercept": 0.0}
-
-                # 3. Application de la formule mathématique linéaire : (Brut * Pente) + Décalage
-                calibrated_ph = (raw_ph * cal_ph["slope"]) + cal_ph["intercept"] if raw_ph is not None else None
-                calibrated_ec = (raw_ec * cal_ec["slope"]) + cal_ec["intercept"] if raw_ec is not None else None
-
-                # 4. Enregistrement de la donnée propre dans TimescaleDB
-                query = """
-                        INSERT INTO telemetry_metrics (timestamp, device_id, ph, ec, water_temp, air_temp, humidity)
-                        VALUES (NOW(), %s, %s, %s, %s, %s, %s) \
-                        """
-                cursor.execute(query, (
-                    device_id,
-                    calibrated_ph,
-                    calibrated_ec,
-                    data.get("water_temp"),
-                    data.get("air_temp"),
-                    data.get("humidity")
-                ))
                 conn.commit()
 
-        print(
-            f"📈 [Télémétrie] {device_id} | pH corrigé: {calibrated_ph:.2f} (brut: {raw_ph}) | EC corrigée: {calibrated_ec:.2f}")
+        print(f"📈 [Télémétrie] {device_id} | {metric}: {final_value:.2f}")
+
     except Exception as e:
         print(f"❌ Erreur lors du traitement de la télémétrie : {e}")
-
 # --- 3. DÉMARRAGE BLOQUANT ---
 def start_worker():
     # Initialisation robuste pour supporter Paho-MQTT v1 et v2
@@ -147,7 +161,7 @@ def start_worker():
 
     client.message_callback_add("hydro/+/weather", handle_weather)
     client.message_callback_add("hydro/+/telemetry", handle_telemetry)
-    client.message_callback_add("hydro/+/acks", handle_actuator)
+    client.message_callback_add("hydro/+/actuators", handle_actuator)
 
     broker_host = getattr(AppConfig, "MQTT_BROKER", "mosquitto")
 
@@ -162,7 +176,7 @@ def start_worker():
     # Le '+' permet d'écouter tous les devices
     client.subscribe("hydro/+/weather")
     client.subscribe("hydro/+/telemetry")
-    client.subscribe("hydro/+/acks")
+    client.subscribe("hydro/+/actuators")
 
     print("📡 Worker MQTT prêt et en écoute (Boucle infinie)...")
     client.loop_forever()

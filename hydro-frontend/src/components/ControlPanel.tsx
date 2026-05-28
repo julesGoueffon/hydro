@@ -25,7 +25,7 @@ export default function ControlPanel({ cameraUrl, systemMode, handleEmergencySto
                 </div>
                 <div className="aspect-video lg:aspect-square w-full bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center border shadow-inner">
                     <img
-                        src={cameraUrl || "http://127.0.0.1:8000/api/camera/latest"}
+                        src={cameraUrl || "/api/camera/latest"}
                         alt="Serre"
                         className="object-cover w-full h-full"
                         key={Math.floor(Date.now() / 10000)}

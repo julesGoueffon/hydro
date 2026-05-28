@@ -1,8 +1,7 @@
 // src/services/api.ts
 
 // En développement, ton API FastAPI tourne sur le port 8000
-const API_BASE_URL = "http://localhost:8000/api";
-
+const API_BASE_URL = "/api";
 export const hydroApi = {
     // --- SUPERVISION ---
     getLiveStatus: async () => {
@@ -30,9 +29,18 @@ export const hydroApi = {
         return response.json();
     },
 
-    updateConfig: async (config: { target_ph: number, target_ec: number, system_mode: string }) => {
+// Modifie cette fonction dans ton objet hydroApi :
+    updateConfig: async (config: {
+        target_ph: number,
+        target_ec: number,
+        target_water_level: number,
+        refill_water_level: number,
+        max_water_level: number,
+        critical_water_level: number,
+        system_mode: string
+    }) => {
         const response = await fetch(`${API_BASE_URL}/config`, {
-            method: 'POST',
+            method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(config)
         });
@@ -75,14 +83,14 @@ export const hydroApi = {
     },
 
     getDeviceSettings: async (deviceId: string) => {
-        const response = await fetch(`${API_BASE_URL}/api/device/${deviceId}/settings`);
+        const response = await fetch(`${API_BASE_URL}/device/${deviceId}/settings`);
         if (!response.ok) throw new Error("Erreur lecture settings");
         return response.json();
     },
     updateDeviceSettings: async (settings: any) => {
-        const response = await fetch(`${API_BASE_URL}/api/device/settings`, {
+        const response = await fetch(`${API_BASE_URL}/settings/device`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(settings)
         });
         if (!response.ok) throw new Error("Erreur sauvegarde settings");
@@ -90,9 +98,9 @@ export const hydroApi = {
     },
 
     triggerAcquisition: async (sensorType: string) => {
-        const response = await fetch(`${API_BASE_URL}/api/command/acquire`, {
+        const response = await fetch(`${API_BASE_URL}/command/acquire`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 device_id: "mock_node2_wet",
                 sensor_type: sensorType,

@@ -60,7 +60,10 @@ class ConfigUpdate(BaseModel):
     system_mode: str
     target_ph: float
     target_ec: float
-
+    target_water_level: float
+    refill_water_level: float    # <-- NOUVEAU
+    max_water_level: float
+    critical_water_level: float
 
 class CalibrationData(BaseModel):
     device_id: str
@@ -196,21 +199,28 @@ def get_latest_camera():
 
 @app.get("/api/config")
 def get_config():
-    """Lit les consignes actuelles de la serre."""
+    """Lit les consignes actuelles et les seuils de la serre."""
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     try:
-        cursor.execute("SELECT mode_auto, target_ph, target_ec FROM system_config WHERE id = 1")
+        # Lecture des 4 niveaux
+        cursor.execute("""
+            SELECT system_mode, target_ph, target_ec, 
+                   target_water_level, refill_water_level, 
+                   max_water_level, critical_water_level 
+            FROM system_config WHERE id = 1
+        """)
         config = cursor.fetchone()
         return {"status": "success", "data": config}
     finally:
         cursor.close()
         conn.close()
 
+# --- B. PARAMÉTRAGE ---
 
 @app.post("/api/config")
 def update_config(config: ConfigUpdate):
-    """Met à jour les consignes de régulation et historise le changement."""
+    """Met à jour les consignes et les seuils, puis historise le changement."""
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -220,18 +230,39 @@ def update_config(config: ConfigUpdate):
                        SET system_mode = %s,
                            target_ph   = %s,
                            target_ec   = %s,
+                           target_water_level   = %s,
+                           refill_water_level   = %s,
+                           max_water_level      = %s,
+                           critical_water_level = %s,
                            updated_at  = NOW()
                        WHERE id = 1
-                       """, (config.system_mode, config.target_ph, config.target_ec))
+                       """, (
+                           config.system_mode,
+                           config.target_ph,
+                           config.target_ec,
+                           config.target_water_level,
+                           config.refill_water_level,
+                           config.max_water_level,
+                           config.critical_water_level
+                       ))
 
-        # 2. Historisation pour le ML
+        # 2. Historisation complète
         cursor.execute("""
-                       INSERT INTO config_history (target_ph, target_ec, system_mode, changed_by)
-                       VALUES (%s, %s, %s, 'api_user')
-                       """, (config.target_ph, config.target_ec, config.system_mode))
+                       INSERT INTO config_history 
+                       (target_ph, target_ec, target_water_level, refill_water_level, max_water_level, critical_water_level, system_mode, changed_by)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, 'api_user')
+                       """, (
+                           config.target_ph,
+                           config.target_ec,
+                           config.target_water_level,
+                           config.refill_water_level,
+                           config.max_water_level,
+                           config.critical_water_level,
+                           config.system_mode
+                       ))
 
         conn.commit()
-        return {"status": "success", "message": "Configuration mise à jour et historisée"}
+        return {"status": "success", "message": "Configuration et seuils mis à jour"}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=str(e))
@@ -240,62 +271,29 @@ def update_config(config: ConfigUpdate):
         conn.close()
 
 
+# --- D. ENDPOINTS POUR LE FRONTEND (IHM) ---
 
 # --- D. ENDPOINTS POUR LE FRONTEND (IHM) ---
 
+# CORRECTION : Renommage de la fonction pour éviter la collision
 @app.get("/api/telemetry/live")
-def get_live_status():
+def get_live_telemetry():
     """Fournit les dernières métriques en temps réel au tableau de bord."""
     conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     try:
-        # Récupère la ligne la plus récente de la table de télémétrie
         cursor.execute("""
-                       SELECT ph, ec, water_temp, air_temp, humidity
+                       SELECT ph, ec, water_temp, air_temp, humidity, water_level
                        FROM telemetry_metrics
                        ORDER BY timestamp DESC
-                           LIMIT 1
+                       LIMIT 1
                        """)
         result = cursor.fetchone()
-        # Fallback pour éviter que le front ne crash si la BDD est vide au démarrage
-        return result or {"ph": 0.0, "ec": 0.0, "water_temp": 0.0, "air_temp": 0.0, "humidity": 0.0}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # CORRECTION : Ajout de water_level au fallback
+        return result or {"ph": 0.0, "ec": 0.0, "water_temp": 0.0, "air_temp": 0.0, "humidity": 0.0, "water_level": 0.0}
     finally:
         cursor.close()
         conn.close()
-
-# @app.get("/api/camera/latest")
-# def get_latest_camera():
-#     """Génère une URL de visualisation sécurisée pour la dernière photo stockée."""
-#     conn = get_db_connection()
-#     cursor = conn.cursor(cursor_factory=RealDictCursor)
-#     try:
-#         cursor.execute("""
-#                        SELECT image_path
-#                        FROM image_metrics
-#                        ORDER BY timestamp DESC
-#                            LIMIT 1
-#                        """)
-#         result = cursor.fetchone()
-#         if not result:
-#             return {"url": None}
-#
-#         # Génération d'une URL présignée par MinIO (valide 1 heure) pour l'affichage img src
-#         url = minio_client.get_presigned_url(
-#             "GET",
-#             BUCKET_NAME,
-#             result["image_path"],
-#             expires=timedelta(hours=1)
-#         )
-#         return {"url": url}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-#     finally:
-#         cursor.close()
-#         conn.close()
-
-
 
 @app.get("/api/actuators/history")
 def get_actuator_history():
@@ -453,7 +451,7 @@ def get_device_settings(device_id: str):
         conn.close()
 
 
-@app.put("/api/device/settings")
+@app.put("/api/settings/device")
 def update_device_settings(settings: DeviceSettingsUpdate):
     """Met à jour la BDD et envoie la nouvelle config à l'ESP32 via MQTT."""
     conn = get_db_connection()

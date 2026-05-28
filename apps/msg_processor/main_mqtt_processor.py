@@ -107,27 +107,35 @@ def handle_telemetry(client, userdata, msg):
 
                 final_value = float(raw_value)
 
-                # --- TRAITEMENT SPÉCIFIQUE : SONDES ANALOGIQUES (pH / EC) ---
-                if metric in ["ph", "ec"]:
-
-                    # A. Sécurité absolue : on stocke TOUJOURS la tension brute
-                    cursor.execute("""
-                                   INSERT INTO telemetry (time, device_id, metric, value)
-                                   VALUES (NOW(), %s, %s, %s)
-                                   """, (device_id, f"{metric}_raw", final_value))
-
-                    # B. Si on est en maintenance (Calibration en cours)
-                    if system_mode == "MAINTENANCE":
-                        # On stocke sous un nom spécifique pour l'écran de calibration du front
+                # ==========================================
+                # LE BOUCLIER MODE MAINTENANCE
+                # ==========================================
+                if system_mode == "MAINTENANCE":
+                    # En maintenance, on ne s'intéresse qu'aux tensions brutes des sondes analogiques
+                    if metric in ["ph", "ec", "water_level"]:
                         cursor.execute("""
                                        INSERT INTO telemetry (time, device_id, metric, value)
                                        VALUES (NOW(), %s, %s, %s)
                                        """, (device_id, f"{metric}_calibration", final_value))
                         conn.commit()
-                        print(f"🔧 [Calibration] {device_id} | Tension {metric}: {final_value:.2f}")
-                        return  # FIN DU TRAITEMENT : On ne pollue pas la métrique principale
+                        print(f"🔧 [Calibration] {device_id} | Tension {metric}: {final_value:.2f} V")
 
-                    # C. Si on est en mode normal, on applique l'équation de droite
+                    # QUELLE QUE SOIT LA MÉTRIQUE (température, humidité, etc.), ON DÉTRUIT LE MESSAGE
+                    # Le "return" empêche le code d'atteindre l'insertion classique en bas.
+                    return
+
+                    # ==========================================
+                # TRAITEMENT NORMAL (Mode AUTO ou MANUEL)
+                # ==========================================
+
+                # A. Sécurité absolue : on stocke TOUJOURS la tension brute en fond de tâche
+                if metric in ["ph", "ec", "water_level"]:
+                    cursor.execute("""
+                                   INSERT INTO telemetry (time, device_id, metric, value)
+                                   VALUES (NOW(), %s, %s, %s)
+                                   """, (device_id, f"{metric}_raw", final_value))
+
+                    # B. On applique l'équation de droite pour convertir la tension en valeur physique
                     cursor.execute("""
                                    SELECT slope, intercept
                                    FROM sensor_calibrations
@@ -135,11 +143,10 @@ def handle_telemetry(client, userdata, msg):
                                    """, (f"{device_id}_{metric}",))
                     cal = cursor.fetchone() or {"slope": 1.0, "intercept": 0.0}
 
-                    # Calcul de la valeur finale calibrée
                     final_value = (final_value * cal["slope"]) + cal["intercept"]
 
-                # --- INSERTION CLASSIQUE ---
-                # (S'applique aux températures directes, ou au pH/EC fraîchement calculés)
+                # C. INSERTION CLASSIQUE DE LA MÉTRIQUE UTILE
+                # (Températures, ou pH/EC/Niveau fraîchement calculés en physique)
                 cursor.execute("""
                                INSERT INTO telemetry (time, device_id, metric, value)
                                VALUES (NOW(), %s, %s, %s)
@@ -151,7 +158,10 @@ def handle_telemetry(client, userdata, msg):
 
     except Exception as e:
         print(f"❌ Erreur lors du traitement de la télémétrie : {e}")
+
+
 # --- 3. DÉMARRAGE BLOQUANT ---
+
 def start_worker():
     # Initialisation robuste pour supporter Paho-MQTT v1 et v2
     try:

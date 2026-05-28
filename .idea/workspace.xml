@@ -4,26 +4,25 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bcea30e7-8ccd-4ddb-8cce-f38ab5d1c5ec" name="Changes" comment="pipe work, now change the hmi for maintenance .">
-      <change afterPath="$PROJECT_DIR$/hydro-frontend/src/components/ActivityMatrix.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/hydro-frontend/src/components/ControlPanel.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/hydro-frontend/src/components/DeviceSettingsModal.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/hydro-frontend/src/components/Header.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/hydro-frontend/src/components/MaintenanceView.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/hydro-frontend/src/components/SensorCard.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/hydro-frontend/src/components/ThermalProfileCard.tsx" afterDir="false" />
+    <list default="true" id="bcea30e7-8ccd-4ddb-8cce-f38ab5d1c5ec" name="Changes" comment="firt hdata : ec et ph">
+      <change afterPath="$PROJECT_DIR$/DockerPowerGuard.ps1" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/hydro-frontend/default.conf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/hydro-frontend/public/web-app-manifest-192x192.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/hydro-frontend/public/web-app-manifest-512x512.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/hydro-frontend/src/components/WaterLevelGauge.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/celery_brain/regulation_wet.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/celery_brain/regulation_wet.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/msg_processor/main_mqtt_processor.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/msg_processor/main_mqtt_processor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/rest_api/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/rest_api/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/twins/wet.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/twins/wet.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/grafana/provisioning/dashboards/provider.yaml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/grafana/provisioning/dashboards/serre-1778060598491.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/grafana/provisioning/datasources/postgres.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.infra.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.infra.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hydro-frontend/Dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/hydro-frontend/Dockerfile" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/hydro-frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/hydro-frontend/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hydro-frontend/src/components/ControlPanel.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/hydro-frontend/src/components/ControlPanel.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hydro-frontend/src/components/DeviceSettingsModal.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/hydro-frontend/src/components/DeviceSettingsModal.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hydro-frontend/src/components/Header.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/hydro-frontend/src/components/Header.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hydro-frontend/src/components/SensorCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/hydro-frontend/src/components/SensorCard.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/hydro-frontend/src/services/api.ts" beforeDir="false" afterPath="$PROJECT_DIR$/hydro-frontend/src/services/api.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/hydro-frontend/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/hydro-frontend/vite.config.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/init.sql" beforeDir="false" afterPath="$PROJECT_DIR$/init.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/setup_kafka.sh" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -67,52 +66,53 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Docker.Dockerfile.executor&quot;: &quot;Run&quot;,
-    &quot;Docker.docker-compose.app.yml.fastapi_backend: Compose Deployment.executor&quot;: &quot;Run&quot;,
-    &quot;Docker.docker-compose.app.yml.spark_images: Compose Deployment.executor&quot;: &quot;Run&quot;,
-    &quot;Docker.docker-compose.app.yml: Compose Deployment.executor&quot;: &quot;Run&quot;,
-    &quot;Docker.docker-compose.infra.yml: Compose Deployment.executor&quot;: &quot;Run&quot;,
-    &quot;Docker.docker-compose.yml.minio-init: Compose Deployment.executor&quot;: &quot;Run&quot;,
-    &quot;Docker.docker-compose.yml.pgadmin: Compose Deployment.executor&quot;: &quot;Run&quot;,
-    &quot;Docker.docker-compose.yml: Compose Deployment.executor&quot;: &quot;Run&quot;,
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.image_main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.image_processor.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ingestion_image.executor&quot;: &quot;Run&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.processor.executor&quot;: &quot;Run&quot;,
-    &quot;Python.telemetry_processor.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.test_bdd.executor&quot;: &quot;Run&quot;,
-    &quot;Python.vision.executor&quot;: &quot;Run&quot;,
-    &quot;Python.wet.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;SHELLCHECK.PATH&quot;: &quot;C:\\Users\\gatho\\AppData\\Roaming\\JetBrains\\PyCharm2026.1\\plugins\\Shell Script\\shellcheck.exe&quot;,
-    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
-    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;video&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/gatho/PycharmProjects/hydro/grafana/provisioning/dashboards&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_interpreter_path&quot;: &quot;C:/Users/gatho/AppData/Roaming/JetBrains/PyCharm2026.1/node/versions/24.15.0/node&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;terminal&quot;,
-    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
-    &quot;ts.external.directory.path&quot;: &quot;C:\\Users\\gatho\\PycharmProjects\\hydro\\hydro-frontend\\node_modules\\typescript\\lib&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Docker.Dockerfile.executor": "Run",
+    "Docker.docker-compose.app.yml.fastapi_backend: Compose Deployment.executor": "Run",
+    "Docker.docker-compose.app.yml.spark_images: Compose Deployment.executor": "Run",
+    "Docker.docker-compose.app.yml: Compose Deployment.executor": "Run",
+    "Docker.docker-compose.infra.yml: Compose Deployment.executor": "Run",
+    "Docker.docker-compose.yml.minio-init: Compose Deployment.executor": "Run",
+    "Docker.docker-compose.yml.pgadmin: Compose Deployment.executor": "Run",
+    "Docker.docker-compose.yml: Compose Deployment.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.image_main.executor": "Run",
+    "Python.image_processor.executor": "Run",
+    "Python.ingestion_image.executor": "Run",
+    "Python.main.executor": "Run",
+    "Python.processor.executor": "Run",
+    "Python.telemetry_processor.executor": "Run",
+    "Python.test.executor": "Run",
+    "Python.test_bdd.executor": "Run",
+    "Python.vision.executor": "Run",
+    "Python.wet.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHELLCHECK.PATH": "C:\\Users\\gatho\\AppData\\Roaming\\JetBrains\\PyCharm2026.1\\plugins\\Shell Script\\shellcheck.exe",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "video",
+    "ignore.virus.scanning.warn.message": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "C:/Users/gatho/PycharmProjects/hydro/hydro-frontend/public",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_interpreter_path": "C:/Users/gatho/AppData/Roaming/JetBrains/PyCharm2026.1/node/versions/24.15.0/node",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "terminal",
+    "to.speed.mode.migration.done": "true",
+    "ts.external.directory.path": "C:\\Users\\gatho\\PycharmProjects\\hydro\\hydro-frontend\\node_modules\\typescript\\lib",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\gatho\PycharmProjects\hydro\hydro-frontend\public" />
       <recent name="C:\Users\gatho\PycharmProjects\hydro\grafana\provisioning\dashboards" />
       <recent name="$PROJECT_DIR$/grafana/provisioning/dashboards" />
     </key>
@@ -265,7 +265,8 @@
       <workItem from="1778075019751" duration="7021000" />
       <workItem from="1778153331699" duration="1220000" />
       <workItem from="1779263889443" duration="33698000" />
-      <workItem from="1779459021358" duration="24800000" />
+      <workItem from="1779459021358" duration="32419000" />
+      <workItem from="1779966692899" duration="15493000" />
     </task>
     <task id="LOCAL-00001" summary="the start">
       <option name="closed" value="true" />
@@ -315,7 +316,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779352947313</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="firt hdata : ec et ph">
+      <option name="closed" value="true" />
+      <created>1779828904818</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1779828904818</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -338,7 +347,8 @@
     <MESSAGE value="before test, juste for the first mock test" />
     <MESSAGE value="first pipe, before grafana" />
     <MESSAGE value="pipe work, now change the hmi for maintenance ." />
-    <option name="LAST_COMMIT_MESSAGE" value="pipe work, now change the hmi for maintenance ." />
+    <MESSAGE value="firt hdata : ec et ph" />
+    <option name="LAST_COMMIT_MESSAGE" value="firt hdata : ec et ph" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

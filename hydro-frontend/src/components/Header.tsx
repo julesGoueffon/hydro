@@ -1,13 +1,16 @@
-import { Activity, Power, Droplets, Wrench } from 'lucide-react';
+import {Activity, Power, Droplets, Wrench, Cpu} from 'lucide-react';
 
 interface HeaderProps {
     isConnected: boolean;
     systemMode: string;
     isPendingMode: boolean;
     handleModeChange: (mode: string) => void;
+    onOpenSettings: () => void; // <-- Nouvelle prop
 }
 
-export default function Header({ isConnected, systemMode, isPendingMode, handleModeChange }: HeaderProps) {
+
+
+export default function Header({ isConnected, systemMode, isPendingMode, handleModeChange,onOpenSettings }: HeaderProps) {
     return (
         <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md shadow-sm border-b border-slate-200 px-4 py-3 flex justify-between items-center">
             <div className="flex items-center gap-2">
@@ -15,6 +18,14 @@ export default function Header({ isConnected, systemMode, isPendingMode, handleM
                 <h1 className="text-lg font-black tracking-tight text-slate-800">HYDROSTACK</h1>
             </div>
             <div className="flex items-center gap-4">
+                {/* BOUTON CONFIG MATÉRIELLE */}
+                <button
+                    onClick={onOpenSettings}
+                    className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold transition-colors"
+                    title="Configuration ESP32"
+                >
+                    <Cpu size={14} /> ESP32
+                </button>
                 <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-full border text-xs font-bold">
                     <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}/>
                     {isConnected ? "ONLINE" : "OFFLINE"}

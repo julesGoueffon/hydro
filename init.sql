@@ -76,14 +76,33 @@ CREATE TABLE IF NOT EXISTS system_config (
     target_ph DOUBLE PRECISION NOT NULL DEFAULT 6.0,
     target_ec DOUBLE PRECISION NOT NULL DEFAULT 1.4,
     system_mode VARCHAR(20) NOT NULL DEFAULT 'AUTO', -- CORRIGÉ : Remplace mode_auto
+-- Les 4 niveaux d'eau
+    target_water_level DOUBLE PRECISION NOT NULL DEFAULT 12.0,   -- Niveau nominal d'arrêt de remplissage
+    refill_water_level DOUBLE PRECISION NOT NULL DEFAULT 7.0,   -- Déclenchement du remplissage
+    max_water_level DOUBLE PRECISION NOT NULL DEFAULT 12.0,      -- Sécurité : Débordement
+    critical_water_level DOUBLE PRECISION NOT NULL DEFAULT 5.0,
+
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Insertion des valeurs par défaut pour que l'ID 1 existe toujours
 -- (Indispensable pour que Celery ne crashe pas au démarrage)
-INSERT INTO system_config (id, target_ph, target_ec, system_mode)
-VALUES (1, 6.0, 1.4, 'AUTO')
+INSERT INTO system_config (id, target_ph, target_ec, target_water_level, refill_water_level, max_water_level, critical_water_level, system_mode)
+VALUES (1, 6.0, 1.4, 12.0, 7.0, 12.0, 5.0, 'AUTO')
 ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS config_history (
+    id SERIAL PRIMARY KEY,
+    target_ph DOUBLE PRECISION,
+    target_ec DOUBLE PRECISION,
+    target_water_level DOUBLE PRECISION,
+    refill_water_level DOUBLE PRECISION,
+    max_water_level DOUBLE PRECISION,
+    critical_water_level DOUBLE PRECISION,
+    system_mode VARCHAR(20),
+    changed_by VARCHAR(50),
+    changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 -- TODO check si les 2 table sont bien utiles
 CREATE TABLE IF NOT EXISTS calibration_history (

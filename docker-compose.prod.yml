@@ -6,7 +6,6 @@ services:
   # ========================================================
   # LE BOUCLIER NGROK (Authentification Google Edge)
   # ========================================================
-
   ngrok:
     image: ngrok/ngrok:latest
     container_name: hydro_ngrok
@@ -16,5 +15,7 @@ services:
       # ⚠️ REMPLACE "frontend:80" par le nom EXACT de ton service Nginx dans ton docker-compose.app.yml
       - "hydro_frontend:80"
       - "--domain=clump-scavenger-stucco.ngrok-free.dev"
+      - "--oauth=google"
+      - "--oauth-allow-email=jules.goueffon89@gmail.com"
     environment:
       - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}

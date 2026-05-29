@@ -60,18 +60,18 @@ services:
     volumes:
       - ./redis_data:/data
 
-  ngrok:
-    image: ngrok/ngrok:latest
-    container_name: hydro-ngrok
-    restart: unless-stopped
-    command:
-      - "http"
-      - "hydro_frontend:80" # ⚠️ Remplace "frontend" par le vrai nom de ton service React dans le docker-compose
-      - "--domain=clump-scavenger-stucco.ngrok-free.dev" # ex: renard-agile-84.ngrok-free.app
-      - "--oauth=google" # <-- Active le portail Google
-      - "--oauth-allow-email=jules.goueffon89@gmail.com"
-    environment:
-      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+#  ngrok:
+#    image: ngrok/ngrok:latest
+#    container_name: hydro_ngrok
+#    restart: unless-stopped
+#    command:
+#      - "http"
+#      - "hydro_frontend:80" # ⚠️ Remplace "frontend" par le vrai nom de ton service React dans le docker-compose
+#      - "--domain=clump-scavenger-stucco.ngrok-free.dev" # ex: renard-agile-84.ngrok-free.app
+#      - "--oauth=google" # <-- Active le portail Google
+#      - "--oauth-allow-email=jules.goueffon89@gmail.com"
+#    environment:
+#      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
 
 
 

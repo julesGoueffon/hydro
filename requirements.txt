@@ -10,4 +10,5 @@ minio
 celery
 psycopg2-binary
 redis
+requests
 pandas

@@ -29,26 +29,28 @@ def physics_engine(speed=1.0):
     print(f"⚙️ Moteur physique démarré (Vitesse: {speed}x)")
     while True:
         if abs(state["target_ph_adjustment"]) > 0.005:
-            step = state["target_ph_adjustment"] * (0.1 * speed)
+            step = state["target_ph_adjustment"] * (0.1 )
             state["ph"] += step
             state["target_ph_adjustment"] -= step
         else:
-            state["ph"] += random.uniform(0.002, 0.005) * speed
+            state["ph"] += random.uniform(0.00, 0.02)*int(random.random() *1.33)
 
         if state["target_ec_adjustment"] > 0.005:
-            step = state["target_ec_adjustment"] * (0.1 * speed)
+            step = state["target_ec_adjustment"] * (0.1 )
             state["ec"] += step
             state["target_ec_adjustment"] -= step
         else:
-            state["ec"] -= 0.002 * speed
+            state["ec"] -= 0.01*int(random.random() *1.1)
 
-        state["water_temp"] += random.uniform(-0.05, 0.05) * speed
+        state["water_temp"] += random.uniform(-0.05, 0.05)
 
-        state["ph"] = round(max(3.0, min(10.0, state["ph"])), 2)
-        state["ec"] = round(max(0.1, state["ec"]), 2)
-        state["water_temp"] = round(max(15.0, min(32.0, state["water_temp"])), 1)
+        state["ph"] = round(max(3.0, min(10.0, state["ph"])), 4)
+        state["ec"] = round(max(0.1, state["ec"]), 4)
+        state["water_temp"] = round(max(15.0, min(32.0, state["water_temp"])), 4)
 
-        time.sleep(0.025)
+        print( state)
+
+        time.sleep(1/speed)
 
 
 def execute_pump(cmd_id, target, duration_ms, client):

@@ -14,7 +14,10 @@ export default function App() {
     const [systemMode, setSystemMode] = useState("AUTO");
     const [isConnected, setIsConnected] = useState(false);
 
-    const [liveData, setLiveData] = useState({ph: 0, ec: 0, water_temp: 0, air_temp: 0, humidity: 0, water_level: 0});
+    // Ajout de air_temp_source_meteo
+    const [liveData, setLiveData] = useState({
+        ph: 0, ec: 0, water_temp: 0, air_temp: 0, air_temp_source_meteo: 0, humidity: 0, water_level: 0
+    });
     const [telemetryHistory, setTelemetryHistory] = useState<any[]>([]);
     const [cameraUrl, setCameraUrl] = useState<string | null>(null);
 
@@ -24,7 +27,6 @@ export default function App() {
     const [showCalibrationModal, setShowCalibrationModal] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
 
-    // CORRECTION 1 : Ajout de setConfig pour rendre l'état mutable
     const [config, setConfig] = useState({
         ph: {target: 6.0, minOk: 5.5, maxOk: 6.5, min: 4.0, max: 8.0},
         ec: {target: 1.4, minOk: 1.2, maxOk: 1.6, min: 0.0, max: 3.0},
@@ -60,13 +62,11 @@ export default function App() {
                     ec: statusRes.data.ec?.value || 0,
                     water_temp: statusRes.data.water_temp?.value || 0,
                     air_temp: statusRes.data.air_temp?.value || 0,
+                    air_temp_source_meteo: statusRes.data.air_temp_source_meteo?.value || 0, // Ajout
                     humidity: statusRes.data.humidity?.value || 0,
                     water_level: statusRes.data.water_level?.value || 0,
-                    ph_raw: statusRes.data.ph_calibration?.value || 0,
-                    ec_raw: statusRes.data.ec_calibration?.value || 0,
                 });
 
-                // CORRECTION 2 : Mise à jour de la config avec les données de la base
                 if (configRes && configRes.data) {
                     const dbConfig = configRes.data;
                     setConfig(prev => ({
@@ -150,8 +150,6 @@ export default function App() {
             });
 
             await hydroApi.sendCommand("ALL_STOP", 0);
-
-            // Forcer un re-fetch pour que l'IHM se mette à jour instantanément
             setSystemMode("MANUAL");
             alert("🚨 ARRÊT D'URGENCE : Le système est passé en mode MANUEL, les pompes sont coupées.");
         } catch (error) {
@@ -188,15 +186,15 @@ export default function App() {
         }
     };
 
-    // --- PRÉPARATION DES DONNÉES GRAPHIQUES ---
     const getMetricHistory = (metricName: string) => {
         return telemetryHistory.filter(d => d.metric === metricName);
     };
 
+    // Agrégation de l'historique Eau + Air (Sonde) + Air (Météo)
     const combinedTempHistory = useMemo(() => {
         const tempMap = new Map();
         telemetryHistory.forEach(d => {
-            if (d.metric === 'water_temp' || d.metric === 'air_temp') {
+            if (d.metric === 'water_temp' || d.metric === 'air_temp' || d.metric === 'air_temp_source_meteo') {
                 if (!tempMap.has(d.time)) tempMap.set(d.time, {time: d.time});
                 tempMap.get(d.time)[d.metric] = d.value;
             }
@@ -204,10 +202,8 @@ export default function App() {
         return Array.from(tempMap.values());
     }, [telemetryHistory]);
 
-
     return (
         <div className="min-h-screen bg-slate-100 text-slate-900 font-sans pb-6">
-
             <Header
                 isConnected={isConnected}
                 systemMode={systemMode}
@@ -216,15 +212,13 @@ export default function App() {
                 onOpenSettings={() => setShowSettings(true)}
             />
 
-            {/* BANNIÈRES */}
             {systemMode === "MAINTENANCE" && (
                 <div className="bg-red-500/10 border-y border-red-500/30 px-4 py-3 flex items-center justify-between">
                     <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
                         <div className="flex items-center gap-3 text-red-400">
                             <AlertOctagon size={20} className="animate-pulse"/>
                             <p className="text-sm font-medium">
-                                <strong className="text-red-300">SYSTÈME VERROUILLÉ :</strong> Régulation automatique
-                                suspendue. Pompes désactivées.
+                                <strong className="text-red-300">SYSTÈME VERROUILLÉ :</strong> Régulation automatique suspendue. Pompes désactivées.
                             </p>
                         </div>
                         <button onClick={() => setShowCalibrationModal(true)}
@@ -236,8 +230,7 @@ export default function App() {
             )}
 
             {systemMode === "MANUAL" && (
-                <div
-                    className="bg-orange-500/10 border-y border-orange-500/30 px-4 py-2 text-center text-orange-600 font-medium text-xs flex items-center justify-center gap-2 tracking-wide uppercase">
+                <div className="bg-orange-500/10 border-y border-orange-500/30 px-4 py-2 text-center text-orange-600 font-medium text-xs flex items-center justify-center gap-2 tracking-wide uppercase">
                     <AlertOctagon size={14} className="animate-bounce"/>
                     Régulation automatique désactivée. Contrôle direct des relais.
                 </div>
@@ -249,8 +242,7 @@ export default function App() {
                 ) : (
                     <>
                         <div className="flex justify-between items-center mb-2 mt-4">
-                            <h2 className="text-sm font-black text-slate-700 uppercase tracking-tight">Capteurs
-                                Principaux</h2>
+                            <h2 className="text-sm font-black text-slate-700 uppercase tracking-tight">Capteurs Principaux</h2>
                             <div className="flex bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
                                 {[
                                     {label: "1H", value: 1},
@@ -275,7 +267,8 @@ export default function App() {
                         {/* ROW 1 : CAPTEURS PRINCIPAUX */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <SensorCard
-                                label="🧪 Potentiel Hydrogène"
+                                label="Potentiel Hydrogène"
+                                shortLabel="pH"
                                 value={liveData.ph}
                                 config={config.ph}
                                 lastUpdate={getMetricHistory('ph').slice(-1)[0]?.time || "--:--"}
@@ -284,7 +277,8 @@ export default function App() {
                                 gradientId="colorPh"
                             />
                             <SensorCard
-                                label="🌿 Conductivité Électrique"
+                                label="Conductivité Électrique"
+                                shortLabel="EC"
                                 value={liveData.ec}
                                 unit="mS/cm"
                                 config={config.ec}
@@ -297,16 +291,18 @@ export default function App() {
 
                         {/* ROW 2 : TEMPERATURES & CLIMAT */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                            {/* Le composant ThermalProfileCard avec les deux sources Air */}
                             <ThermalProfileCard
                                 waterTemp={liveData.water_temp}
-                                airTemp={liveData.air_temp}
-                                targetWaterTemp={config.waterTemp.target}
+                                airTempSensor={liveData.air_temp}
+                                airTempMeteo={liveData.air_temp_source_meteo}
+                                config={config.waterTemp}
+                                lastUpdate={combinedTempHistory.length > 0 ? combinedTempHistory[combinedTempHistory.length - 1].time : "--:--"}
                                 historyData={combinedTempHistory}
                             />
 
-                            {/* CARTE HUMIDITÉ */}
-                            <div
-                                className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col justify-between">
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col justify-between">
                                 <div className="p-4">
                                     <h3 className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 mb-1">
                                         <Droplets size={16} className="text-teal-500"/> Hygrométrie
@@ -316,21 +312,18 @@ export default function App() {
                                         <span className="text-[10px] font-bold text-teal-500 uppercase tracking-wider">Humidité Air</span>
                                     </div>
                                 </div>
-                                <div
-                                    className="h-28 w-full bg-slate-50 border-t border-slate-100 mt-2 flex items-center justify-center">
+                                <div className="h-28 w-full bg-slate-50 border-t border-slate-100 mt-2 flex items-center justify-center">
                                     <span className="text-xs text-slate-400 font-medium">En attente de données</span>
                                 </div>
                             </div>
 
-                            {/* NOUVELLE CARTE NIVEAU D'EAU */}
                             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
                                 <div className="flex justify-between items-start mb-2">
-                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Niveau
-                                        d'eau</h3>
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Niveau d'eau</h3>
                                     <div className="text-right">
-                <span className="text-2xl font-black text-slate-800">
-                    {(liveData.water_level || 0).toFixed(1)}
-                </span>
+                                        <span className="text-2xl font-black text-slate-800">
+                                            {(liveData.water_level || 0).toFixed(1)}
+                                        </span>
                                         <span className="text-sm font-bold text-slate-400 ml-1">cm</span>
                                     </div>
                                 </div>
@@ -347,6 +340,7 @@ export default function App() {
                                 />
                             </div>
                         </div>
+
                         {/* ROW 3 : VISION ET ACTIONNEURS */}
                         <ControlPanel
                             cameraUrl={cameraUrl}

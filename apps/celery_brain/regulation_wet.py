@@ -77,12 +77,12 @@ def evaluate_and_control():
         target_ec = config["target_ec"]
 
         # 1. VERROU : VÉRIFICATION DU DÉLAI DE MÉLANGE
-        cursor.execute(cursor.execute("""
+        cursor.execute("""
                        SELECT time, actuator_id, status
                        FROM actuator_logs
                        WHERE status = 'COMPLETED'
                        ORDER BY time DESC LIMIT 1
-                       """))
+                       """)
         last_action = cursor.fetchone()
 
         if last_action:

@@ -129,7 +129,7 @@ export default function App() {
     // --- ACTIONS ---
     const handlePump = async (pumpName: string, durationMs: number) => {
         try {
-            await hydroApi.sendCommand(pumpName, durationMs);
+            await hydroApi.overridePump(pumpName, durationMs);
         } catch (error: any) {
             alert(`Erreur actionneur (${pumpName}) : ${error.message || "Refusé"}`);
         }

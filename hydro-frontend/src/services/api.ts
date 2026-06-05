@@ -47,18 +47,6 @@ export const hydroApi = {
         return response.json();
     },
 
-    // --- CONTRÔLE-COMMANDE ---
-    sendCommand: async (target: string, duration_ms: number, device_id: string = "mock_node2_wet") => {
-        const res = await fetch(`${API_BASE_URL}/command/override`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            // On respecte exactement le Pydantic Model `CommandOverride` de ton backend
-            body: JSON.stringify({target, duration_ms, device_id}),
-        });
-        if (!res.ok) throw new Error("Erreur d'envoi de la commande");
-        return res.json();
-    },
-
 
     getActuatorHistory: async () => {
         const response = await fetch(`${API_BASE_URL}/actuators/history`);
